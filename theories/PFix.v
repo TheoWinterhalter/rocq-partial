@@ -301,3 +301,19 @@ Proof.
     eapply graph_functional. 2: eassumption.
     apply def_graph_sound.
 Qed. *)
+
+(** orec is a monad *)
+
+Fixpoint orec_bind {A B C D} (o : orec A B C) (d : C → orec A B D) :=
+  match o with
+  | o_ret c => d c
+  | o_grd P k => o_grd P (λ h, orec_bind (k h) d)
+  | o_rec x k => o_rec x (λ v, orec_bind (k v) d)
+  end.
+
+(** Partial functions compose through orec *)
+
+Definition lift {A B C} (u : partial C) : orec A B C :=
+  o_grd (defined u) (λ h, o_ret (value u h)).
+
+
