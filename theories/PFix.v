@@ -12,10 +12,12 @@ Unset Equations With Funext.
 (** General recursion by recording call tree *)
 
 Inductive orec A B C :=
-| o_ret (x : partial C)
+| o_ret (x : C)
+| o_grd (P : Prop) (κ : P → orec A B C)
 | o_rec (x : A) (κ : B x → orec A B C).
 
 Arguments o_ret {A B C}.
+Arguments o_grd {A B C}.
 Arguments o_rec {A B C}.
 
 Section Graph.
@@ -23,26 +25,31 @@ Section Graph.
   Context {A B} (f : ∀ (x : A), orec A B (B x)).
 
   Inductive orec_graph {a} : orec A B (B a) → B a → Prop :=
-  | ret_graph :
-      ∀ x p,
-        orec_graph (o_ret x) (value x p)
+  | ret_graph x :
+      orec_graph (o_ret x) x
 
-  | rec_graph :
-      ∀ x κ v w,
-        orec_graph (f x) v →
-        orec_graph (κ v) w →
-        orec_graph (o_rec x κ) w.
+  | grd_graph P κ v :
+      P →
+      (∀ h, orec_graph (κ h) v) →
+      orec_graph (o_grd P κ) v
+
+  | rec_graph x κ v w :
+      orec_graph (f x) v →
+      orec_graph (κ v) w →
+      orec_graph (o_rec x κ) w.
 
   Definition graph x v :=
     orec_graph (f x) v.
 
   Inductive orec_lt {a} : A → orec A B (B a) → Prop :=
-  | top_lt :
-      ∀ x κ,
-        orec_lt x (o_rec x κ)
+  | guard_lt P κ h x :
+      orec_lt x (κ h) →
+      orec_lt x (o_grd P κ)
 
-  | rec_lt :
-      ∀ x κ v y,
+  | top_lt x κ :
+      orec_lt x (o_rec x κ)
+
+  | rec_lt x κ v y :
         graph x v →
         orec_lt y (κ v) →
         orec_lt y (o_rec x κ).
@@ -64,7 +71,8 @@ Section Graph.
   Proof.
     intros a o v w hv hw.
     induction hv in w, hw |- *.
-    - depelim hw. apply unique_value.
+    - depelim hw. reflexivity.
+    - depelim hw. firstorder.
     - depelim hw.
       assert (v = v0).
       { apply IHhv1. assumption. }
@@ -92,6 +100,7 @@ Section Graph.
     set (o := f _) in *. clearbody o.
     induction h in x', h' |- *.
     - depelim h'.
+    - depelim h'. firstorder.
     - depelim h'.
       + constructor. intros y h.
         apply IHh1. assumption.
@@ -113,6 +122,7 @@ Section Graph.
     set (o := f _) in *. clearbody o.
     induction h in y, hlt |- *.
     - depelim hlt.
+    - depelim hlt. firstorder.
     - depelim hlt.
       + eexists. eassumption.
       + assert (v = v0).
@@ -171,12 +181,23 @@ Section Graph.
     (da : domain a)
     (ha : ∀ x, orec_lt x e → partial_lt x a)
     (r : ∀ y, domain y → partial_lt y a → oimage (f y)) : oimage e :=
-    orec_inst (o_ret v) de da ha r := ⟨ value v _ ⟩ ;
+    orec_inst (o_ret v) de da ha r := ⟨ v ⟩ ;
+    orec_inst (o_grd P κ) de da ha r := ⟨ ((orec_inst (κ _) _ _ _ r)) ∙1 ⟩ ;
     orec_inst (o_rec x κ) de da ha r := ⟨ ((orec_inst (κ ((r x _ _) ∙1)) _ _ _ r)) ∙1 ⟩.
   Proof.
-    - red in de. destruct de as [vv hv].
-      depelim hv. assumption.
     - constructor.
+    - red in de. destruct de as [v de]. depelim de. assumption.
+    - red in de. destruct de as [v de]. depelim de. cbn. firstorder.
+    - apply ha. econstructor. eassumption.
+    - red in de. destruct de as [v de]. depelim de. cbn.
+      destruct orec_inst. simpl.
+      econstructor. 1: assumption.
+      intros h. cbn in o.
+      assert (v = x).
+      { eapply orec_graph_functional.
+        all: eauto.
+      }
+      subst. auto.
     - eapply lt_preserves_domain. 1: eassumption.
       apply ha. constructor.
     - apply ha. constructor.
@@ -242,9 +263,17 @@ Proof.
     eapply graph_functional. all: eassumption.
 Qed.
 
+(*
+What we have below would require an assert command which in turn would be
+equivalent to having proof irrelevance.
+We could also switch [partial] to mere propositions, unclear what is the best
+strategy.
+*)
+(* #[refine]
 Fixpoint orec_apply {A B C} (e : orec A B C) f :=
   match e with
-  | o_ret v => v
+  | o_ret v => ret v
+  | o_grd P k => _
   | o_rec a k => bind (f a) (λ x, orec_apply (k x) f)
   end.
 
@@ -271,4 +300,4 @@ Proof.
     destruct e as [p e]. rewrite e.
     eapply graph_functional. 2: eassumption.
     apply def_graph_sound.
-Qed.
+Qed. *)
