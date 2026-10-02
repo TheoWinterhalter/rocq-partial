@@ -302,6 +302,45 @@ Proof.
     apply def_graph_sound.
 Qed. *)
 
+(* We could prove the following instead, not sure it's worth it *)
+
+Inductive eval {A B} (g : ∀ x, partial (B x)) {C} : orec A B C → C → Prop :=
+| eval_ret c : eval g (o_ret c) c
+| eval_grd P κ v : P → (∀ h, eval g (κ h) v) → eval g (o_grd P κ) v
+| eval_rec x κ v w : g x ↦ v → eval g (κ v) w → eval g (o_rec x κ) w.
+
+Lemma orec_graph_eval A B f a (o : orec A B (B a)) v :
+  orec_graph f o v →
+  eval (pfix f) o v.
+Proof.
+  induction 1 as [x | x P κ v p h ih | x y κ v w hf ihf hk ihk].
+  - constructor.
+  - constructor. all: assumption.
+  - econstructor. 2: exact ihk. apply graph_pfix. assumption.
+Qed.
+
+Lemma eval_orec_graph A B f a (o : orec A B (B a)) v :
+  eval (pfix f) o v →
+  orec_graph f o v.
+Proof.
+  induction 1 as [c | P κ v p h ih | x κ v w hx hk ih].
+  - constructor.
+  - constructor. all: assumption.
+  - econstructor. 2: eassumption.
+    destruct hx as [hd e].
+    pose proof (pfix_graph _ _ _ _ hd) as h.
+    rewrite e in h. assumption.
+Qed.
+
+Lemma pfix_unfold A B f a v :
+  @pfix A B f a ↦ v ↔ eval (pfix f) (f a) v.
+Proof.
+  split.
+  - intros [h e]. admit.
+  - intros h%eval_orec_graph.
+    apply graph_pfix. assumption.
+Admitted.
+
 (** orec is a monad *)
 
 Fixpoint orec_bind {A B C D} (o : orec A B C) (d : C → orec A B D) :=
