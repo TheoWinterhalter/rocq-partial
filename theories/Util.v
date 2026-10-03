@@ -18,3 +18,22 @@ Lemma reflexive_eq A R `{Reflexive A R} x y :
 Proof.
   intros []. reflexivity.
 Qed.
+
+Record hProp := mkprop {
+  prop :> Prop ;
+  isprop : ∀ (x y : prop), x = y
+}.
+
+#[refine]
+Definition hTrue :=
+  mkprop True _.
+Proof.
+  intros [] []. reflexivity.
+Defined.
+
+#[refine]
+Definition hFalse :=
+  mkprop False _.
+Proof.
+  intros [].
+Defined.

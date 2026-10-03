@@ -13,7 +13,7 @@ Unset Equations With Funext.
 
 Inductive orec A B C :=
 | o_ret (x : C)
-| o_grd (P : Prop) (κ : P → orec A B C)
+| o_grd (P : hProp) (κ : P → orec A B C)
 | o_rec (x : A) (κ : B x → orec A B C).
 
 Arguments o_ret {A B C}.
@@ -28,9 +28,8 @@ Section Graph.
   | ret_graph x :
       orec_graph (o_ret x) x
 
-  | grd_graph P κ v :
-      P →
-      (∀ h, orec_graph (κ h) v) →
+  | grd_graph (P : hProp) κ v (h : P) :
+      orec_graph (κ h) v →
       orec_graph (o_grd P κ) v
 
   | rec_graph x κ v w :
@@ -72,11 +71,14 @@ Section Graph.
     intros a o v w hv hw.
     induction hv in w, hw |- *.
     - depelim hw. reflexivity.
-    - depelim hw. firstorder.
+    - depelim hw. cbn in hw.
+      assert (h = h0) as <-.
+      { apply isprop. }
+      firstorder.
     - depelim hw.
-      assert (v = v0).
-      { apply IHhv1. assumption. }
-      subst. apply IHhv2. assumption.
+      assert (v = v0) as <-.
+      { firstorder. }
+      firstorder.
   Qed.
 
   Lemma graph_functional x v w :
@@ -100,7 +102,10 @@ Section Graph.
     set (o := f _) in *. clearbody o.
     induction h in x', h' |- *.
     - depelim h'.
-    - depelim h'. firstorder.
+    - depelim h'. cbn in h'.
+      assert (h = h1) as <-.
+      { apply isprop. }
+      firstorder.
     - depelim h'.
       + constructor. intros y h.
         apply IHh1. assumption.
@@ -122,7 +127,10 @@ Section Graph.
     set (o := f _) in *. clearbody o.
     induction h in y, hlt |- *.
     - depelim hlt.
-    - depelim hlt. firstorder.
+    - depelim hlt. cbn in hlt.
+      assert (h = h1) as <-.
+      { apply isprop. }
+      firstorder.
     - depelim hlt.
       + eexists. eassumption.
       + assert (v = v0).
@@ -191,13 +199,12 @@ Section Graph.
     - apply ha. econstructor. eassumption.
     - red in de. destruct de as [v de]. depelim de. cbn.
       destruct orec_inst. simpl.
-      econstructor. 1: assumption.
-      intros h. cbn in o.
+      econstructor.
       assert (v = x).
       { eapply orec_graph_functional.
         all: eauto.
       }
-      subst. auto.
+      subst. eauto.
     - eapply lt_preserves_domain. 1: eassumption.
       apply ha. constructor.
     - apply ha. constructor.
@@ -222,7 +229,9 @@ Section Graph.
   Equations? def_p (x : A) (h : domain x) : oimage (f x)
     by wf x partial_lt :=
     def_p x h := orec_inst (a := x) (f x) h h (λ x Hx, Hx) (λ y hy hr, def_p y hy).
-  Proof. exact hr. Defined.
+  Proof.
+    exact hr.
+  Defined.
 
   Definition def x h :=
     (def_p x h) ∙1.
@@ -235,14 +244,19 @@ Section Graph.
     unfold def. destruct def_p. assumption.
   Qed.
 
+  Lemma domain_prop x :
+    ∀ (h1 h2 : domain x), h1 = h2.
+  Proof.
+    (* Would follow from PI, probably doable without *)
+  Admitted.
+
 End Graph.
 
 #[refine]
 Definition pfix {A B} (f : ∀ (x : A), orec A B (B x)) (a : A) : partial (B a) :=
-  guarded (domain f a) (def _ _) _.
+  guarded (mkprop (domain f a) _) (def _ _).
 Proof.
-  intros [v hv] [w hw].
-  eapply graph_functional. all: apply def_graph_sound.
+  apply domain_prop.
 Defined.
 
 Lemma pfix_graph A B f a h :
@@ -302,45 +316,6 @@ Proof.
     apply def_graph_sound.
 Qed. *)
 
-(* We could prove the following instead, not sure it's worth it *)
-
-Inductive eval {A B} (g : ∀ x, partial (B x)) {C} : orec A B C → C → Prop :=
-| eval_ret c : eval g (o_ret c) c
-| eval_grd P κ v : P → (∀ h, eval g (κ h) v) → eval g (o_grd P κ) v
-| eval_rec x κ v w : g x ↦ v → eval g (κ v) w → eval g (o_rec x κ) w.
-
-Lemma orec_graph_eval A B f a (o : orec A B (B a)) v :
-  orec_graph f o v →
-  eval (pfix f) o v.
-Proof.
-  induction 1 as [x | x P κ v p h ih | x y κ v w hf ihf hk ihk].
-  - constructor.
-  - constructor. all: assumption.
-  - econstructor. 2: exact ihk. apply graph_pfix. assumption.
-Qed.
-
-Lemma eval_orec_graph A B f a (o : orec A B (B a)) v :
-  eval (pfix f) o v →
-  orec_graph f o v.
-Proof.
-  induction 1 as [c | P κ v p h ih | x κ v w hx hk ih].
-  - constructor.
-  - constructor. all: assumption.
-  - econstructor. 2: eassumption.
-    destruct hx as [hd e].
-    pose proof (pfix_graph _ _ _ _ hd) as h.
-    rewrite e in h. assumption.
-Qed.
-
-Lemma pfix_unfold A B f a v :
-  @pfix A B f a ↦ v ↔ eval (pfix f) (f a) v.
-Proof.
-  split.
-  - intros [h e]. admit.
-  - intros h%eval_orec_graph.
-    apply graph_pfix. assumption.
-Admitted.
-
 (** orec is a monad *)
 
 Fixpoint orec_bind {A B C D} (o : orec A B C) (d : C → orec A B D) :=
@@ -354,5 +329,3 @@ Fixpoint orec_bind {A B C D} (o : orec A B C) (d : C → orec A B D) :=
 
 Definition lift {A B C} (u : partial C) : orec A B C :=
   o_grd (defined u) (λ h, o_ret (value u h)).
-
-

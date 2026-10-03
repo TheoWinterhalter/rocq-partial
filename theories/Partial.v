@@ -11,24 +11,24 @@ Unset Equations With Funext.
 
 (**
   We define partial values as a record with
-  - a proposition telling us whether it has a value or not;
-  - the value when the proposition holds;
-  - a proof that the value is unique.
-
-  We could also require the proposition to be a mere proposition, or put it in
-  SProp, but that would lead to complications we decided against.
+  - a mere proposition telling us whether it has a value or not;
+  - the value when the proposition holds.
 *)
 
 Record partial A := guarded {
-  defined : Prop ;
-  value : defined → A ;
-  unique_value : ∀ p q, value p = value q
+  defined : hProp ;
+  value : defined → A
 }.
 
 Arguments guarded {A}.
 Arguments defined {A}.
 Arguments value {A}.
-Arguments unique_value {A}.
+
+Lemma unique_value {A} (a : partial A) p q :
+  value a p = value a q.
+Proof.
+  f_equal. apply isprop.
+Qed.
 
 (** Equality and ordering of partial values *)
 
@@ -47,21 +47,22 @@ Notation "u ≲ v" := (partial_le u v) (at level 70, no associativity).
 #[export]
 Instance Reflexive_partial_eq A : Reflexive (@partial_eq A).
 Proof.
-  intros [P v h]. split. all: cbn.
-  all: firstorder.
+  intros [P v]. split. all: cbn.
+  - firstorder.
+  - intros. f_equal. apply isprop.
 Qed.
 
 #[export]
 Instance Symmetric_partial_eq A : Symmetric (@partial_eq A).
 Proof.
-  intros [P v p] [Q w q] [hPQ e]. cbn in *. split. all: cbn.
+  intros [P v] [Q w] [hPQ e]. cbn in *. split. all: cbn.
   all: firstorder.
 Qed.
 
 #[export]
 Instance Transitive_partial_eq A : Transitive (@partial_eq A).
 Proof.
-  intros [P v p] [Q w q] [R z r] [hPQ evw] [hQR ewz].
+  intros [P v] [Q w] [R z] [hPQ evw] [hQR ewz].
   cbn in *. split. all: cbn. 1: firstorder.
   intros x y. unshelve erewrite evw. 1: firstorder.
   eapply ewz.
@@ -70,14 +71,15 @@ Qed.
 #[export]
 Instance Reflexive_partial_le A : Reflexive (@partial_le A).
 Proof.
-  intros [P v h]. split. all: cbn.
-  all: firstorder.
+  intros [P v]. split. all: cbn.
+  - firstorder.
+  - intros. f_equal. apply isprop.
 Qed.
 
 #[export]
 Instance Transitive_partial_le A : Transitive (@partial_le A).
 Proof.
-  intros [P v p] [Q w q] [R z r] [hPQ evw] [hQR ewz].
+  intros [P v] [Q w] [R z] [hPQ evw] [hQR ewz].
   cbn in *. split. all: cbn. 1: firstorder.
   intros x y. unshelve erewrite evw. 1: firstorder.
   eapply ewz.
@@ -121,11 +123,13 @@ Lemma partial_eq_eq A (u v : partial A) :
   u = v.
 Proof.
   intros hpe hfe [h%hpe e].
-  destruct u as [du vu uu], v as [dv vv uv].
+  destruct u as [[du hu] vu], v as [[dv hv] vv].
   cbn in *. subst.
   assert (vu = vv) as ->.
   { apply hfe. intros. apply e. }
-  f_equal. apply PropExt_ProofIrr. assumption.
+  assert (hu = hv) as ->.
+  { apply PropExt_ProofIrr. assumption. }
+  reflexivity.
 Qed.
 
 (** Definition relation *)
@@ -147,19 +151,19 @@ Qed.
 (** Partiality is a monad *)
 
 Definition ret {A} (a : A) : partial A :=
-  guarded True (λ _, a) (λ _ _, eq_refl).
+  guarded hTrue (λ _, a).
 
 #[refine]
 Definition bind {A B} (pa : partial A) (pb : A → partial B) : partial B :=
-  let (da,va,ua) := pa in
+  let (da,va) := pa in
   guarded
-    (∃ p : da, defined (pb (va p)))
-    (λ p, value (pb (value pa (ex_proj1 p))) (ex_proj2 p))
-    _.
+    (mkprop (∃ p : da, defined (pb (va p))) _)
+    (λ p, value (pb (value pa (ex_proj1 p))) (ex_proj2 p)).
 Proof.
-  intros [p1 p2] [q1 q2]. cbn.
-  apply partial_eq_value.
-  erewrite ua. reflexivity.
+  intros [p1 p2] [q1 q2].
+  assert (p1 = q1) as <-.
+  { apply isprop. }
+  f_equal. apply isprop.
 Defined.
 
 (** Monad laws, relative to partial equality *)
@@ -224,9 +228,10 @@ Qed.
 
 (** Partiality is easily witnessed by the undefined constant *)
 
-#[refine]
 Definition undefined {A} : partial A :=
-  guarded False (λ h, False_rect _ h) _.
-Proof.
-  contradiction.
-Defined.
+  guarded hFalse (λ h, False_rect _ h).
+
+(** The monad also supports assuming mere propositions *)
+
+Definition guard (P : hProp) : partial P :=
+  guarded P (λ h, h).
