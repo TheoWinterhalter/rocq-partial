@@ -277,17 +277,10 @@ Proof.
     eapply graph_functional. all: eassumption.
 Qed.
 
-(*
-What we have below would require an assert command which in turn would be
-equivalent to having proof irrelevance.
-We could also switch [partial] to mere propositions, unclear what is the best
-strategy.
-*)
-(* #[refine]
 Fixpoint orec_apply {A B C} (e : orec A B C) f :=
   match e with
   | o_ret v => ret v
-  | o_grd P k => _
+  | o_grd P k => bind (guard P) (λ h, orec_apply (k h) f)
   | o_rec a k => bind (f a) (λ x, orec_apply (k x) f)
   end.
 
@@ -295,8 +288,10 @@ Lemma orec_graph_apply A B (f : ∀ x, orec A B (B x)) a o (v : B a) :
   orec_graph f o v →
   orec_apply o (pfix f) ↦ v.
 Proof.
-  induction 1 as [a x p | a a' k b' b hf ihf hk ihk].
-  - cbn. rewrite hasdef_equiv. reflexivity.
+  induction 1 as [a x | a P k v h hk ih | a a' k b' b hf ihf hk ihk].
+  - cbn. apply hasdef_ret.
+  - cbn. eapply hasdef_bind. 2: eassumption.
+    apply hasdef_guard.
   - cbn. eapply hasdef_bind.
     + apply graph_pfix. eassumption.
     + assumption.
@@ -314,7 +309,7 @@ Proof.
     destruct e as [p e]. rewrite e.
     eapply graph_functional. 2: eassumption.
     apply def_graph_sound.
-Qed. *)
+Qed.
 
 (** orec is a monad *)
 

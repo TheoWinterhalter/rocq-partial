@@ -235,3 +235,11 @@ Definition undefined {A} : partial A :=
 
 Definition guard (P : hProp) : partial P :=
   guarded P (λ h, h).
+
+Lemma hasdef_guard P h :
+  guard P ↦ h.
+Proof.
+  split.
+  - cbn. assumption.
+  - cbn. intros. apply isprop.
+Qed.
