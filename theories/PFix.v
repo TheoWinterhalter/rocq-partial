@@ -244,11 +244,48 @@ Section Graph.
     unfold def. destruct def_p. assumption.
   Qed.
 
+  Scheme orec_graph_ind_dep := Induction for orec_graph Sort Prop.
+
+  Definition rec_pack {a} x (κ : B x → orec A B (B a)) (s : oimage (f x))
+  (t : oimage (κ (proj1_sig s))) : oimage (o_rec x κ) :=
+    exist _ (proj1_sig t)
+      (rec_graph x κ (proj1_sig s) (proj1_sig t) (proj2_sig s) (proj2_sig t)).
+
+  Lemma rec_pack_eq {a} x (κ : B x → orec A B (B a)) (s s' : oimage (f x)) t t' :
+    s = s' →
+    (∀ t'' : oimage (κ (proj1_sig s)), t = t'') →
+    rec_pack x κ s t = rec_pack x κ s' t'.
+  Proof. intros E H. destruct E. f_equal. apply H. Qed.
+
+  Lemma oimage_prop_aux {a} (o : orec A B (B a)) v (d : orec_graph o v) :
+    ∀ s' : oimage o, ⟨ v | d ⟩ = s'.
+  Proof.
+    induction d as [a x | a P κ v h d ih | a x κ v1 w e1 ih1 e2 ih2]
+    using orec_graph_ind_dep.
+    - intros [w d']. depelim d'. reflexivity.
+    - intros [w d']. depelim d'.
+      assert (h0 = h) as ->. { apply isprop. }
+      exact (f_equal (λ s : oimage (κ h),
+              ⟨ proj1_sig s | grd_graph P κ (proj1_sig s) h (proj2_sig s) ⟩)
+            (ih ⟨ w | d' ⟩)).
+    - intros [w' d']. depelim d'.
+      match goal with
+      | |- _ = ⟨ ?w' | rec_graph _ _ ?v1' _ ?e1' ?e2' ⟩ =>
+          exact (rec_pack_eq x κ ⟨ v1 | e1 ⟩ ⟨ v1' | e1' ⟩ ⟨ w | e2 ⟩ ⟨ w' | e2' ⟩
+                  (ih1 _) ih2)
+      end.
+  Qed.
+
+  Lemma oimage_prop a (o : orec A B (B a)) (s s' : oimage o) : s = s'.
+  Proof. destruct s as [v d]. apply oimage_prop_aux. Qed.
+
   Lemma domain_prop x :
     ∀ (h1 h2 : domain x), h1 = h2.
   Proof.
-    (* Would follow from PI, probably doable without *)
-  Admitted.
+    intros [v hv] [w hw].
+    exact (f_equal (λ s : oimage (f x), ex_intro (graph x) (proj1_sig s) (proj2_sig s))
+                 (oimage_prop x (f x) (exist _ v hv) (exist _ w hw))).
+  Qed.
 
 End Graph.
 
