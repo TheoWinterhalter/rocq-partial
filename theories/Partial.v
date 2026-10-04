@@ -1,6 +1,8 @@
 From Stdlib Require Import Utf8 RelationClasses.
-From Partial Require Import Util.
+From Partial Require Import Util Monad.
 From Equations Require Import Equations.
+
+Import MonadNotations.
 
 Set Default Goal Selector "!".
 (* Set Universe Polymorphism. *)
@@ -166,10 +168,15 @@ Proof.
   f_equal. apply isprop.
 Defined.
 
+#[export] Instance Monad_partial : Monad partial := {|
+  ret A a := p_ret a ;
+  bind A B m k := p_bind m k
+|}.
+
 (** Monad laws, relative to partial equality *)
 
 Lemma p_ret_bind {A B} (a : A) (pb : A → partial B) :
-  p_bind (p_ret a) pb ≈ pb a.
+  bind (ret a) pb ≈ pb a.
 Proof.
   split.
   - cbn. firstorder. constructor.
@@ -178,7 +185,7 @@ Proof.
 Qed.
 
 Lemma p_bind_ret {A} (pa : partial A) :
-  p_bind pa p_ret ≈ pa.
+  bind pa ret ≈ pa.
 Proof.
   split.
   - cbn. firstorder.
@@ -187,7 +194,7 @@ Proof.
 Qed.
 
 Lemma p_bind_assoc {A B C} (pa : partial A) (pb : A → partial B) (pc : B → partial C) :
-  p_bind (p_bind pa pb) pc ≈ p_bind pa (λ a, p_bind (pb a) pc).
+  bind (bind pa pb) pc ≈ bind pa (λ a, bind (pb a) pc).
 Proof.
   split.
   - cbn. split.
@@ -206,7 +213,7 @@ Qed.
 (** Monad and hasdef *)
 
 Lemma hasdef_ret A (a : A) :
-  p_ret a ↦ a.
+  ret a ↦ a.
 Proof.
   unshelve rewrite hasdef_equiv. 1: constructor.
   cbn. reflexivity.

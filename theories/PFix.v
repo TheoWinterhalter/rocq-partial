@@ -1,6 +1,7 @@
 From Stdlib Require Import Utf8 RelationClasses.
-From Partial Require Import Util Partial.
+From Partial Require Import Util Monad Partial.
 From Equations Require Import Equations.
+Import MonadNotations.
 
 Set Default Goal Selector "!".
 (* Set Universe Polymorphism. *)
@@ -357,7 +358,15 @@ Fixpoint orec_bind {A B C D} (o : orec A B C) (d : C → orec A B D) :=
   | o_rec x k => o_rec x (λ v, orec_bind (k v) d)
   end.
 
+#[export] Instance Monad_orec {A B} : Monad (orec A B) := {|
+  ret C c := o_ret c ;
+  bind C D m k := orec_bind m k
+|}.
+
 (** Partial functions compose through orec *)
 
-Definition lift {A B C} (u : partial C) : orec A B C :=
+Definition o_lift {A B C} (u : partial C) : orec A B C :=
   o_grd (defined u) (λ h, o_ret (value u h)).
+
+#[export] Instance Lift_partial_orec {A B} : MonadLift partial (orec A B) :=
+  λ C u, o_lift u.
