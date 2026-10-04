@@ -316,9 +316,9 @@ Qed.
 
 Fixpoint orec_apply {A B C} (e : orec A B C) f :=
   match e with
-  | o_ret v => ret v
-  | o_grd P k => bind (guard P) (λ h, orec_apply (k h) f)
-  | o_rec a k => bind (f a) (λ x, orec_apply (k x) f)
+  | o_ret v => p_ret v
+  | o_grd P k => p_bind (guard P) (λ h, orec_apply (k h) f)
+  | o_rec a k => p_bind (f a) (λ x, orec_apply (k x) f)
   end.
 
 Lemma orec_graph_apply A B (f : ∀ x, orec A B (B x)) a o (v : B a) :

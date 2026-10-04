@@ -150,11 +150,11 @@ Qed.
 
 (** Partiality is a monad *)
 
-Definition ret {A} (a : A) : partial A :=
+Definition p_ret {A} (a : A) : partial A :=
   guarded hTrue (λ _, a).
 
 #[refine]
-Definition bind {A B} (pa : partial A) (pb : A → partial B) : partial B :=
+Definition p_bind {A B} (pa : partial A) (pb : A → partial B) : partial B :=
   let (da,va) := pa in
   guarded
     (mkprop (∃ p : da, defined (pb (va p))) _)
@@ -168,8 +168,8 @@ Defined.
 
 (** Monad laws, relative to partial equality *)
 
-Lemma ret_bind {A B} (a : A) (pb : A → partial B) :
-  bind (ret a) pb ≈ pb a.
+Lemma p_ret_bind {A B} (a : A) (pb : A → partial B) :
+  p_bind (p_ret a) pb ≈ pb a.
 Proof.
   split.
   - cbn. firstorder. constructor.
@@ -177,8 +177,8 @@ Proof.
     apply unique_value.
 Qed.
 
-Lemma bind_ret {A} (pa : partial A) :
-  bind pa ret ≈ pa.
+Lemma p_bind_ret {A} (pa : partial A) :
+  p_bind pa p_ret ≈ pa.
 Proof.
   split.
   - cbn. firstorder.
@@ -186,8 +186,8 @@ Proof.
     apply unique_value.
 Qed.
 
-Lemma bind_assoc {A B C} (pa : partial A) (pb : A → partial B) (pc : B → partial C) :
-  bind (bind pa pb) pc ≈ bind pa (λ a, bind (pb a) pc).
+Lemma p_bind_assoc {A B C} (pa : partial A) (pb : A → partial B) (pc : B → partial C) :
+  p_bind (p_bind pa pb) pc ≈ p_bind pa (λ a, p_bind (pb a) pc).
 Proof.
   split.
   - cbn. split.
@@ -206,7 +206,7 @@ Qed.
 (** Monad and hasdef *)
 
 Lemma hasdef_ret A (a : A) :
-  ret a ↦ a.
+  p_ret a ↦ a.
 Proof.
   unshelve rewrite hasdef_equiv. 1: constructor.
   cbn. reflexivity.
@@ -215,7 +215,7 @@ Qed.
 Lemma hasdef_bind A B a f v w :
   a ↦ w →
   f w ↦ v →
-  @bind A B a f ↦ v.
+  @p_bind A B a f ↦ v.
 Proof.
   intros ha hf.
   unshelve rewrite hasdef_equiv.

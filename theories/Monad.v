@@ -21,6 +21,19 @@ Arguments bind {M _ A B}.
 Definition map {M} `{Monad M} {A B} (f : A → B) (m : M A) : M B :=
   bind m (λ x, ret (f x)).
 
+Class MonadLift (M N : Type → Type) := lift : ∀ {A}, M A → N A.
+
+Class MonadLiftT (M N : Type → Type) := liftT : ∀ {A}, M A → N A.
+
+#[export] Instance MonadLiftT_refl M : MonadLiftT M M :=
+  λ A x, x.
+
+#[export] Instance MonadLiftT_trans M N K :
+  MonadLift M N →
+  MonadLiftT N K →
+  MonadLiftT M K
+:= λ fMN fNK A x, fNK _ (fMN _ x).
+
 Module MonadNotations.
 
   Declare Scope monad_scope.
