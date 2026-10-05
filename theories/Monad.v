@@ -22,22 +22,22 @@ Definition map {M} `{Monad M} {A B} (f : A → B) (m : M A) : M B :=
   bind m (λ x, ret (f x)).
 
 Class MonadLift (M N : Type → Type) :=
-  mlift : ∀ A, M A → N A.
+  one_step_lift : ∀ A, M A → N A.
 
-Arguments mlift {M N _ A}.
+Arguments one_step_lift {M N _ A}.
 
 #[export] Hint Mode MonadLift - ! : typeclass_instances.
 
 Class MonadLiftT (M N : Type → Type) :=
-  liftT : ∀ A, M A → N A.
+  lift : ∀ A, M A → N A.
 
-Arguments liftT {M N _ A}.
+Arguments lift {M N _ A}.
 
 #[export] Instance LiftT_refl M : MonadLiftT M M | 10 := λ A m, m.
 
 #[export] Instance LiftT_step M N P `{MonadLift N P} `{MonadLiftT M N} :
   MonadLiftT M P | 5
-:= λ A m, mlift (liftT m).
+:= λ A m, one_step_lift (lift m).
 
 Module MonadNotations.
 
