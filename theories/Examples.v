@@ -100,6 +100,115 @@ Definition sum_lens : nat → nat → partial (nat * nat) :=
       ret (k + r)
   ).
 
+(** A tiny simply-typed lambda calculus. *)
+
+Inductive ty : Type :=
+| TNat
+| TBool
+| TArr : ty → ty → ty.
+
+Inductive tm : Type :=
+| TVar   : nat → tm
+| TNatLit : nat → tm
+| TTrue  : tm
+| TFalse : tm
+| TApp   : tm → tm → tm
+| TLam   : ty → tm → tm
+| TIf    : tm → tm → tm → tm.
+
+(** Contexts use de Bruijn indices: variable 0 is the newest binding. *)
+
+Fixpoint lookup_ty (n : nat) (Γ : list ty) : option ty :=
+  match n, Γ with
+  | 0, A :: _     => Some A
+  | S n', _ :: Γ' => lookup_ty n' Γ'
+  | _, _           => None
+  end.
+
+Fixpoint ty_eqb (A B : ty) : bool :=
+  match A, B with
+  | TNat, TNat => true
+  | TBool, TBool => true
+  | TArr A1 A2, TArr B1 B2 =>
+      ty_eqb A1 B1 && ty_eqb A2 B2
+  | _, _ => false
+  end.
+
+(** Type checking. *)
+Definition typeof : (list ty * tm) → ExnT string partial ty :=
+  pfixExn (λ '(Γ, t),
+    match t with
+
+    | TVar x =>
+        match lookup_ty x Γ with
+        | Some A => ret A
+        | None   => raise "unbound variable"%string
+        end
+
+    | TNatLit _ =>
+        ret TNat
+
+    | TTrue =>
+        ret TBool
+
+    | TFalse =>
+        ret TBool
+
+    | TApp f a =>
+        Tf ← call (Γ, f) ;;
+        Ta ← call (Γ, a) ;;
+        match Tf with
+        | TArr A B =>
+            if ty_eqb A Ta then
+              ret B
+            else
+              raise "argument type mismatch"%string
+        | _ =>
+            raise "application of a non-function"%string
+        end
+
+    | TLam A body =>
+        B ← call (A :: Γ, body) ;;
+        ret (TArr A B)
+
+    | TIf c t e =>
+        Tc ← call (Γ, c) ;;
+        match Tc with
+        | TBool =>
+            Tt ← call (Γ, t) ;;
+            Te ← call (Γ, e) ;;
+            if ty_eqb Tt Te then
+              ret (Tt : ty)
+            else
+              raise "branches have different types"%string
+        | _ =>
+            raise "condition is not a boolean"%string
+        end
+
+    end
+  ).
+
+(** Some examples. *)
+
+Definition id_nat : tm :=
+  TLam TNat (TVar 0).
+
+Definition good_app : tm :=
+  TApp id_nat (TNatLit 42).
+
+Definition bad_app : tm :=
+  TApp id_nat TTrue.
+
+Definition good_if : tm :=
+  TIf TTrue (TNatLit 0) (TNatLit 1).
+
+Definition bad_if : tm :=
+  TIf TTrue (TNatLit 0) TFalse.
+
+Definition typeof_x
+  (Γ : list ty) (t : tm) : _ → exn string ty :=
+  value (typeof (Γ, t)).
+
 (** Extraction *)
 
 (* Unfolding for extraction *)
@@ -118,4 +227,5 @@ Definition sum_lens_x n m : _ → nat * nat := value (sum_lens n m).
 Extraction "extracted.ml" value
   collatz_x test
   collatz_steps_x total_steps_x total_steps_safe_x
-  collatz_trace_x collatz_max_x collatz_len_x sum_lens_x.
+  collatz_trace_x collatz_max_x collatz_len_x sum_lens_x
+  id_nat good_app bad_app good_if bad_if typeof_x.
