@@ -1,8 +1,11 @@
 opam-version: "2.0"
 version: "1.0"
 maintainer: "theo.winterhalter@inria.fr"
-dev-repo: "git@github.com:TheoWinterhalter/rocq-partialfun.git"
-bug-reports: "https://github.com/TheoWinterhalter/rocq-partialfun/issues"
+description: "A Rocq library for partial functions."
+homepage: "https://github.com/TheoWinterhalter/rocq-partial"
+license: "MIT"
+dev-repo: "git@github.com:TheoWinterhalter/rocq-partial.git"
+bug-reports: "https://github.com/TheoWinterhalter/rocq-partial/issues"
 authors: [
   "Théo Winterhalter <theo.winterhalter@inria.fr>"
   "Meven Lennon-Bertand <mgapb2@cam.ac.uk>"
@@ -11,7 +14,7 @@ authors: [
 depends: [
   "dune" {>= "3.13"}
   "rocq-core" {>= "9.2~" & < "9.3~"}
-  "rocq-stdlib" {>= "9.2~" & < "9.3~"}
+  "rocq-stdlib" {>= "9.1~" & < "9.2~"}
 ]
 build: [
   [
