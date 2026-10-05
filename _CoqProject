@@ -1,3 +1,5 @@
 -R theories Partial
 
+-arg "-output-directory src"
+
 theories

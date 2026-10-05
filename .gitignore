@@ -35,3 +35,6 @@ nra.cache
 Makefile.rocq
 
 Makefile.rocq.conf
+
+*.out
+src/extracted.ml*
