@@ -34,9 +34,11 @@ combine programs in the partial and in the recursion monads.
 ## Behind the scenes
 
 This library works by combining several ideas from the literature:
+  - Continuity and effectiveness in topoi, Giuseppe Rosolini
+  - Axiomatic Domain Theory in Categories of Partial Maps, Marcelo Fiore
+  - Modelling general recursion in type theory, Ana Bove and Venanzio Capretta
   - Turing-completeness totally free, Conor McBride
   - The Braga Method: Extracting Certified Algorithms from Complex Recursive Schemes in Coq, Dominique Larchey-Wendling and Jean-François Monin
-  - Modelling general recursion in type theory, Ana Bove and Venanzio Capretta
 
 The `partial` monad is given by a *mere* proposition (in the sense of
 homotopy type theory, an "hProp") which asserts whether it is defined, and a
