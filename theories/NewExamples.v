@@ -106,11 +106,13 @@ Definition collatz_steps_x n : _ → exn string nat := value (collatz_steps n).
 Definition total_steps_x n : _ → exn string nat := value (total_steps n).
 Definition total_steps_safe_x n : _ → exn string nat :=
   value (total_steps_safe n).
-Definition collatz_trace_x n m : _ → nat * nat := value (collatz_max n m).
+Definition collatz_max_x n m : _ → nat * nat := value (collatz_max n m).
+Definition collatz_trace_x n l : _ → nat * list nat :=
+  value (collatz_trace n l).
 Definition collatz_len_x n : _ → nat := value (collatz_len n).
 Definition sum_lens_x n m : _ → nat * nat := value (sum_lens n m).
 
 Extraction "extracted.ml" value
   collatz_x test
   collatz_steps_x total_steps_x total_steps_safe_x
-  collatz_trace_x collatz_len_x sum_lens_x.
+  collatz_trace_x collatz_max_x collatz_len_x sum_lens_x.
