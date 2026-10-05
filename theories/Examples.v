@@ -125,14 +125,18 @@ Fixpoint lookup_ty (n : nat) (Γ : list ty) : option ty :=
   | _, _           => None
   end.
 
-Fixpoint ty_eqb (A B : ty) : bool :=
-  match A, B with
-  | TNat, TNat => true
-  | TBool, TBool => true
-  | TArr A1 A2, TArr B1 B2 =>
-      ty_eqb A1 B1 && ty_eqb A2 B2
-  | _, _ => false
-  end.
+Definition ty_eqb : ty * ty → ExnT string partial bool :=
+  pfixExn (λ '(A, B),
+    match A, B with
+    | TNat, TNat => ret true
+    | TBool, TBool => ret true
+    | TArr A1 A2, TArr B1 B2 =>
+      b1 ← call (A1, B1) ;;
+      b2 ← call (A2, B2) ;;
+      ret (b1 && b2)%bool
+    | _, _ => ret false
+    end
+  ).
 
 (** Type checking. *)
 Definition typeof : (list ty * tm) → ExnT string partial ty :=
@@ -159,7 +163,8 @@ Definition typeof : (list ty * tm) → ExnT string partial ty :=
         Ta ← call (Γ, a) ;;
         match Tf with
         | TArr A B =>
-            if ty_eqb A Ta then
+            b ← lift (ty_eqb (A, Ta)) ;;
+            if b then
               ret B
             else
               raise "argument type mismatch"%string
@@ -177,7 +182,8 @@ Definition typeof : (list ty * tm) → ExnT string partial ty :=
         | TBool =>
             Tt ← call (Γ, t) ;;
             Te ← call (Γ, e) ;;
-            if ty_eqb Tt Te then
+            b ← lift (ty_eqb (Tt, Te)) ;;
+            if b then
               ret (Tt : ty)
             else
               raise "branches have different types"%string
