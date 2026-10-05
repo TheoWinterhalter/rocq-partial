@@ -13,6 +13,27 @@ Arguments call {A C M _} x.
 #[export] Instance Call_orec {A B} : MonadCall A B (orec A B) :=
   λ x, o_rec x o_ret.
 
+(** Plain recursion
+
+  Necessary to help unification somehow.
+
+*)
+
+Definition Rec A (B : A → Type) (C : Type) : Type := orec A B C.
+
+#[export] Instance Monad_Rec {A B} : Monad (Rec A B) := Monad_orec.
+
+#[export] Instance Call_Rec {A B} : MonadCall A B (Rec A B) :=
+  λ x, o_rec x o_ret.
+
+#[export] Instance Lift_partial_Rec {A B} : MonadLift partial (Rec A B) :=
+  λ C u, lift u.
+
+Definition pfixRec {A B} (f : ∀ x : A, Rec A B (B x)) : ∀ x, partial (B x) :=
+  pfix f.
+
+(** Exceptions *)
+
 Inductive exn E A :=
 | success (x : A)
 | exception (e : E).
@@ -67,3 +88,53 @@ Definition pfixExn {E A} {C : A → Type}
   (f : ∀ x, ExnT E (orec A (λ x, exn E (C x))) (C x)) :
   ∀ x, ExnT E partial (C x) :=
   λ x, pfix (B := λ x, exn E (C x)) f x.
+
+(** State *)
+
+Class MonadState S (M : Type → Type) := {
+  get : M S ;
+  put : S → M unit
+}.
+
+Arguments get {S M _}.
+Arguments put {S M _} s.
+
+#[export] Hint Mode MonadState - ! : typeclass_instances.
+
+Definition modify {S M} `{MonadState S M} `{Monad M} (f : S → S) : M unit :=
+  s ← get ;;
+  put (f s).
+
+Definition StateT S (M : Type → Type) (A : Type) : Type :=
+  S → M (A * S)%type.
+
+#[export] Instance Monad_StateT S M `{Monad M} : Monad (StateT S M) := {|
+  ret A a := λ s, ret (M := M) (a, s) ;
+  bind A B m k := λ s, bind (M := M) (m s) (λ '(a, s'), k a s')
+|}.
+
+#[export, refine] Instance State_StateT S M `{Monad M} : MonadState S (StateT S M) := {|
+  get := λ s, ret (M := M) (s, s) ;
+  put := λ s' _, ret (M := M) (_, s')
+|}.
+Proof.
+  exact tt. (* If I give it above it doesn't work?? *)
+Defined.
+
+#[export] Instance Lift_StateT S M `{Monad M} : MonadLift M (StateT S M) :=
+  λ A m s, bind (M := M) m (λ a, ret (M := M) (a, s)).
+
+#[export] Instance Raise_StateT E S M `{MonadRaise E M} : MonadRaise E (StateT S M) :=
+  λ A e s, raise e.
+
+(** Recursion with state: the state is threaded through the call as an
+    extra argument and result. *)
+#[export] Instance Call_StateT {S A C} :
+  MonadCall A C (StateT S (orec (A * S) (λ p, C (fst p) * S)%type)) :=
+  λ x s, o_rec (x, s) o_ret.
+
+Definition pfixState {S A} {C : A → Type}
+  (f : ∀ x, StateT S (orec (A * S) (λ p, C (fst p) * S)%type) (C x)) :
+  ∀ x, S → partial (C x * S)%type :=
+  λ x s, pfix (A := (A * S)%type) (B := λ p, (C (fst p) * S)%type)
+    (λ p, f (fst p) (snd p)) (x, s).

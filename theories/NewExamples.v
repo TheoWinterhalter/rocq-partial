@@ -56,6 +56,47 @@ Definition total_steps_safe : nat → ExnT string partial nat :=
       ret (k + r)
   ).
 
+(** Now state *)
+
+(** Collatz, logging every visited value in the state. Returns the number of steps. *)
+Definition collatz_trace : nat → list nat → partial (nat * list nat) :=
+  pfixState (λ n,
+    modify (cons n) ;;
+    if n =? 1 then ret 0
+    else
+      r ← call (if Nat.even n then n / 2 else 3 * n + 1) ;;
+      ret (S r)
+  ).
+
+(** Max value reached, with a step counter as state. *)
+Definition collatz_max : nat → nat → partial (nat * nat) :=
+  pfixState (λ n,
+    modify S ;;
+    if n =? 1 then ret 1
+    else
+      m ← call (if Nat.even n then n / 2 else 3 * n + 1) ;;
+      ret (Nat.max n m)
+  ).
+
+(** A partial function called from a stateful one through [liftT]. *)
+Definition collatz_len : nat → partial nat :=
+  pfixRec (λ n,
+    if n =? 1 then ret 0
+    else
+      r ← call (if Nat.even n then n / 2 else 3 * n + 1) ;;
+      ret (S r)
+  ).
+
+Definition sum_lens : nat → nat → partial (nat * nat) :=
+  pfixState (λ n,
+    k ← lift (collatz_len n) ;;
+    modify (Nat.add k) ;;
+    if n =? 1 then ret 0
+    else
+      r ← call (n - 1) ;;
+      ret (k + r)
+  ).
+
 (** Extraction *)
 
 (* Unfolding for extraction *)
@@ -65,7 +106,11 @@ Definition collatz_steps_x n : _ → exn string nat := value (collatz_steps n).
 Definition total_steps_x n : _ → exn string nat := value (total_steps n).
 Definition total_steps_safe_x n : _ → exn string nat :=
   value (total_steps_safe n).
+Definition collatz_trace_x n m : _ → nat * nat := value (collatz_max n m).
+Definition collatz_len_x n : _ → nat := value (collatz_len n).
+Definition sum_lens_x n m : _ → nat * nat := value (sum_lens n m).
 
 Extraction "extracted.ml" value
   collatz_x test
-  collatz_steps_x total_steps_x total_steps_safe_x.
+  collatz_steps_x total_steps_x total_steps_safe_x
+  collatz_trace_x collatz_len_x sum_lens_x.
