@@ -38,6 +38,7 @@ This library works by combining several ideas from the literature:
   - Axiomatic Domain Theory in Categories of Partial Maps, Marcelo Fiore
   - Modelling general recursion in type theory, Ana Bove and Venanzio Capretta
   - Turing-completeness totally free, Conor McBride
+  - Partial Elements and Recursion via Dominances in Univalent Type Theory,  Martín Escardó and Cory Knapp
   - The Braga Method: Extracting Certified Algorithms from Complex Recursive Schemes in Coq, Dominique Larchey-Wendling and Jean-François Monin
 
 The `partial` monad is given by a *mere* proposition (in the sense of
