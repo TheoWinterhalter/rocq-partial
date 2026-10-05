@@ -14,7 +14,8 @@ authors: [
 depends: [
   "dune" {>= "3.13"}
   "rocq-core" {>= "9.2~" & < "9.3~"}
-  "rocq-stdlib" {>= "9.1~" & < "9.2~"}
+  "rocq-stdlib"
+  "rocq-equations"
 ]
 build: [
   [
