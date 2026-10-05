@@ -2,3 +2,57 @@
 
 This library provides a `partial` monad for representing partiality.
 Resulting programs can be composed, reasoned about, and extracted.
+
+## Using the library
+
+Have a look at `theories/Examples.v` to see how to use it.
+For extraction, this is completed by having a look at `src/main.ml`.
+
+A basic example is the following:
+```rocq
+Definition collatz : nat → partial nat :=
+  pfixRec (λ n,
+    if n =? 1 then ret 0
+    else
+      x ← call (if Nat.even n then n / 2 else 3 * n + 1) ;;
+      ret (S x)
+  ).
+
+Definition test : nat → partial nat :=
+  pfixRec (λ n,
+    if n =? 0 then ret 0
+    else
+      k ← lift (collatz n) ;;
+      r ← call (n - 1) ;;
+      ret (k + r)
+  ).
+```
+
+It makes use of notations for monads, and shows how one can use `lift` to
+combine programs in the partial and in the recursion monads.
+
+## Behind the scenes
+
+This library works by combining several ideas from the literature:
+  - Turing-completeness totally free, Conor McBride
+  - The Braga Method: Extracting Certified Algorithms from Complex Recursive Schemes in Coq, Dominique Larchey-Wendling and Jean-François Monin
+  - Modelling general recursion in type theory, Ana Bove and Venanzio Capretta
+
+The `partial` monad is given by a *mere* proposition (in the sense of
+homotopy type theory, an "hProp") which asserts whether it is defined, and a
+function guarded by the proposition, which returns a value when it is.
+
+```rocq
+Record partial A := guarded {
+  defined : hProp ;
+  value : defined → A
+}.
+```
+
+This is enough to easily show it is a monad (although its laws are only up to
+propositional equality when assuming proposition and function extensionality),
+and to implement `undefined {A} : partial A`.
+For general recursion, we use a general recursion monad, we call `orec`, which
+records recursive calls explicitly in a tree.
+We use it to define a graph of the function, and then its domain, and define the
+partial function by induction on said domain.
