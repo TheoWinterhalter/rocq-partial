@@ -1,6 +1,5 @@
--R theories PartialFun
+-R theories Partial
 
-theories/Monad.v
-theories/PartialFun.v
-theories/MonadExn.v
-theories/Examples.v
+-arg "-output-directory src"
+
+theories

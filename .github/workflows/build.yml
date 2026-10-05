@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      coq_version: "9.0"
+      coq_version: "9.2"
       fail-fast: true
 
     steps:

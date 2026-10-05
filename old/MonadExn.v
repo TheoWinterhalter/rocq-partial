@@ -2,7 +2,7 @@
 
 From Equations Require Import Equations.
 From Stdlib Require Import Utf8 List Arith Lia.
-From PartialFun Require Import PartialFun Monad.
+From Partial Require Import PartialFun Monad.
 
 Import ListNotations.
 Import MonadNotations.
@@ -59,14 +59,14 @@ Definition MonadRaiseExnT {E M} `{Monad M} : MonadRaise E (λ A, M (exn E A)) :=
   raise A e := ret (exception e)
 |}.
 
-Definition OrecEffectExn E : OrecEffect (exn E). 
-Proof. 
+Definition OrecEffectExn E : OrecEffect (exn E).
+Proof.
   constructor; intros.
   apply MonadExnT.
 Defined.
 
 Definition OrecEffectExnRaise E I `{CallTypes I} A B: MonadRaise E (combined_orec (exn E) I A B) :=
-{| 
+{|
   raise A e := ret (exception e)
 |}.
 

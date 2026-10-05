@@ -9,8 +9,9 @@ authors: [
   "Kenji Maillard <kenji@maillard.blue>"
 ]
 depends: [
-  "rocq-prover" { >= "8.19" & < "9.1~" }
-  "rocq-equations" { >= "1.3" }
+  "dune" {>= "3.13"}
+  "rocq-core" {>= "9.2~" & < "9.3~"}
+  "rocq-stdlib" {>= "9.2~" & < "9.3~"}
 ]
 build: [
   [

@@ -21,6 +21,24 @@ Arguments bind {M _ A B}.
 Definition map {M} `{Monad M} {A B} (f : A → B) (m : M A) : M B :=
   bind m (λ x, ret (f x)).
 
+Class MonadLift (M N : Type → Type) :=
+  one_step_lift : ∀ A, M A → N A.
+
+Arguments one_step_lift {M N _ A}.
+
+#[export] Hint Mode MonadLift - ! : typeclass_instances.
+
+Class MonadLiftT (M N : Type → Type) :=
+  lift : ∀ A, M A → N A.
+
+Arguments lift {M N _ A}.
+
+#[export] Instance LiftT_refl M : MonadLiftT M M | 10 := λ A m, m.
+
+#[export] Instance LiftT_step M N P `{MonadLift N P} `{MonadLiftT M N} :
+  MonadLiftT M P | 5
+:= λ A m, one_step_lift (lift m).
+
 Module MonadNotations.
 
   Declare Scope monad_scope.
@@ -34,22 +52,38 @@ Module MonadNotations.
 
   Notation "x ← e ;; f" :=
     (bind e (λ x, f))
-    (at level 100, e at next level, right associativity)
+    (at level 100, e at next level, right associativity, format "x  ←  e ;;  f")
     : monad_scope.
 
   Notation "x ← e ;;[ M ] f" :=
-      (bind (M:=M) e (λ x, f))
-      (at level 100, e at next level, M at level 50, right associativity)
-      : monad_scope.
+    (bind (M:=M) e (λ x, f)) (
+      at level 100,
+      e at next level,
+      M at level 50,
+      right associativity,
+      only parsing
+    )
+    : monad_scope.
 
   Notation "' pat ← e ;; f" :=
-    (bind e (λ pat, f))
-    (at level 100, e at next level, right associativity, pat pattern)
+    (bind e (λ pat, f)) (
+      at level 100,
+      e at next level,
+      right associativity,
+      pat pattern,
+      format "' pat  ←  e  ;;  f"
+    )
     : monad_scope.
 
   Notation "' pat ← e ;;[ M ] f" :=
-    (bind (M:=M) e (λ pat, f))
-    (at level 100, e at next level, M at level 50, right associativity, pat pattern)
+    (bind (M:=M) e (λ pat, f)) (
+      at level 100,
+      e at next level,
+      M at level 50,
+      right associativity,
+      pat pattern,
+      only parsing
+    )
     : monad_scope.
 
   Notation "e ;; f" :=
@@ -59,7 +93,7 @@ Module MonadNotations.
 
   Notation "e ;;[ M ] f" :=
     (bind (M:=M) e (λ _, f))
-    (at level 100, M at level 50, right associativity)
+    (at level 100, M at level 50, right associativity, only parsing)
     : monad_scope.
 
   Notation "f '<*>' m" :=
