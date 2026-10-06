@@ -35,6 +35,19 @@ Definition pfixRec {A B} (F : (∀ a, Rec A B (B a)) → ∀ a, Rec A B (B a)) a
 
 Arguments pfixRec {A B} & F.
 
+Definition pfixRec2 {A B C}
+  (F :
+    (∀ a b, Rec (A * B) (λ p, C (fst p) (snd p)) (C a b)) →
+    (∀ a b, Rec (A * B) (λ p, C (fst p) (snd p)) (C a b))
+  ) a b : partial (C (fst (a,b)) (snd (a,b)))
+:=
+  pfixRec
+    (A := A * B)
+    (B := λ p, C (fst p) (snd p))
+    (λ f p, F (λ a b, f (a,b)) (fst p) (snd p)) (a,b).
+
+Arguments pfixRec2 {A B C} & F.
+
 (** Exceptions *)
 
 Inductive exn E A :=
