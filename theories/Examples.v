@@ -28,11 +28,11 @@ Definition test : nat → partial nat :=
 
 (** Number of Collatz steps; raises on 0 (which would loop forever). *)
 Definition collatz_steps : nat → ExnT string partial nat :=
-  pfixExn (λ n,
+  pfixExn (λ collatz_steps n,
     if n =? 0 then raise "collatz: zero"%string
     else if n =? 1 then ret 0
     else
-      r ← call (if Nat.even n then n / 2 else 3 * n + 1) ;;
+      r ← collatz_steps (if Nat.even n then n / 2 else 3 * n + 1) ;;
       ret (S r)
   ).
 
@@ -41,21 +41,21 @@ Definition collatz_steps : nat → ExnT string partial nat :=
   propagates through the recursion without any explicit matching.
 *)
 Definition total_steps : nat → ExnT string partial nat :=
-  pfixExn (λ n,
+  pfixExn (λ total_steps n,
     k ← lift (collatz_steps n) ;;
     if n =? 0 then ret k
     else
-      r ← call (n - 1) ;;
+      r ← total_steps (n - 1) ;;
       ret (k + r)
   ).
 
 (** Same, but recovers from the error with [catch]. *)
 Definition total_steps_safe : nat → ExnT string partial nat :=
-  pfixExn (λ n,
+  pfixExn (λ total_steps_safe n,
     k ← catch (lift (collatz_steps n)) (λ _, ret 0) ;;
     if n =? 0 then ret k
     else
-      r ← call (n - 1) ;;
+      r ← total_steps_safe (n - 1) ;;
       ret (k + r)
   ).
 
@@ -63,25 +63,25 @@ Definition total_steps_safe : nat → ExnT string partial nat :=
 
 (** Collatz, logging every visited value in the state. Returns the number of steps. *)
 Definition collatz_trace : nat → list nat → partial (nat * list nat) :=
-  pfixState (λ n,
+  pfixState (λ collatz_trace n,
     modify (cons n) ;;
     if n =? 1 then ret 0
     else
-      r ← call (if Nat.even n then n / 2 else 3 * n + 1) ;;
+      r ← collatz_trace (if Nat.even n then n / 2 else 3 * n + 1) ;;
       ret (S r)
   ).
 
 (** Max value reached, with a step counter as state. *)
 Definition collatz_max : nat → nat → partial (nat * nat) :=
-  pfixState (λ n,
+  pfixState (λ collatz_max n,
     modify S ;;
     if n =? 1 then ret 1
     else
-      m ← call (if Nat.even n then n / 2 else 3 * n + 1) ;;
+      m ← collatz_max (if Nat.even n then n / 2 else 3 * n + 1) ;;
       ret (Nat.max n m)
   ).
 
-(** A partial function called from a stateful one through [liftT]. *)
+(** A partial function typeofed from a stateful one through [liftT]. *)
 Definition collatz_len : nat → partial nat :=
   pfixRec (λ collatz_len n,
     if n =? 1 then ret 0
@@ -91,12 +91,12 @@ Definition collatz_len : nat → partial nat :=
   ).
 
 Definition sum_lens : nat → nat → partial (nat * nat) :=
-  pfixState (λ n,
+  pfixState (λ sum_lens n,
     k ← lift (collatz_len n) ;;
     modify (Nat.add k) ;;
     if n =? 1 then ret 0
     else
-      r ← call (n - 1) ;;
+      r ← sum_lens (n - 1) ;;
       ret (k + r)
   ).
 
@@ -126,13 +126,13 @@ Fixpoint lookup_ty (n : nat) (Γ : list ty) : option ty :=
   end.
 
 Definition ty_eqb : ty * ty → ExnT string partial bool :=
-  pfixExn (λ '(A, B),
+  pfixExn (λ ty_eqb '(A, B),
     match A, B with
     | TNat, TNat => ret true
     | TBool, TBool => ret true
     | TArr A1 A2, TArr B1 B2 =>
-      b1 ← call (A1, B1) ;;
-      b2 ← call (A2, B2) ;;
+      b1 ← ty_eqb (A1, B1) ;;
+      b2 ← ty_eqb (A2, B2) ;;
       ret (b1 && b2)%bool
     | _, _ => ret false
     end
@@ -140,7 +140,7 @@ Definition ty_eqb : ty * ty → ExnT string partial bool :=
 
 (** Type checking. *)
 Definition typeof : (list ty * tm) → ExnT string partial ty :=
-  pfixExn (λ '(Γ, t),
+  pfixExn (λ typeof '(Γ, t),
     match t with
 
     | TVar x =>
@@ -159,8 +159,8 @@ Definition typeof : (list ty * tm) → ExnT string partial ty :=
         ret TBool
 
     | TApp f a =>
-        Tf ← call (Γ, f) ;;
-        Ta ← call (Γ, a) ;;
+        Tf ← typeof (Γ, f) ;;
+        Ta ← typeof (Γ, a) ;;
         match Tf with
         | TArr A B =>
             b ← lift (ty_eqb (A, Ta)) ;;
@@ -173,15 +173,15 @@ Definition typeof : (list ty * tm) → ExnT string partial ty :=
         end
 
     | TLam A body =>
-        B ← call (A :: Γ, body) ;;
+        B ← typeof (A :: Γ, body) ;;
         ret (TArr A B)
 
     | TIf c t e =>
-        Tc ← call (Γ, c) ;;
+        Tc ← typeof (Γ, c) ;;
         match Tc with
         | TBool =>
-            Tt ← call (Γ, t) ;;
-            Te ← call (Γ, e) ;;
+            Tt ← typeof (Γ, t) ;;
+            Te ← typeof (Γ, e) ;;
             b ← lift (ty_eqb (Tt, Te)) ;;
             if b then
               ret (Tt : ty)

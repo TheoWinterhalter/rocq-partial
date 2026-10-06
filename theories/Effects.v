@@ -87,10 +87,15 @@ Definition catch {E M} `{Monad M} {A} (m : ExnT E M A) (h : E → ExnT E M A) :
   MonadCall A C (ExnT E (orec A (λ x, exn E (C x)))) :=
   λ x, o_rec x o_ret.
 
-Definition pfixExn {E A} {C : A → Type}
-  (f : ∀ x, ExnT E (orec A (λ x, exn E (C x))) (C x)) :
-  ∀ x, ExnT E partial (C x) :=
-  λ x, pfix (B := λ x, exn E (C x)) f x.
+Definition pfixExn {E A B}
+  (F :
+    (∀ a, ExnT E (orec A (λ x, exn E (B x))) (B a)) →
+    (∀ a, ExnT E (orec A (λ x, exn E (B x))) (B a))
+  ) a : ExnT E partial (B a)
+:=
+  pfix (B := λ x, exn E (B x)) (F call) a.
+
+Arguments pfixExn {E A B} & F.
 
 (** State *)
 
@@ -136,8 +141,15 @@ Defined.
   MonadCall A C (StateT S (orec (A * S) (λ p, C (fst p) * S)%type)) :=
   λ x s, o_rec (x, s) o_ret.
 
-Definition pfixState {S A} {C : A → Type}
-  (f : ∀ x, StateT S (orec (A * S) (λ p, C (fst p) * S)%type) (C x)) :
-  ∀ x, S → partial (C x * S)%type :=
-  λ x s, pfix (A := (A * S)%type) (B := λ p, (C (fst p) * S)%type)
-    (λ p, f (fst p) (snd p)) (x, s).
+Definition pfixState {S A B}
+  (F :
+    (∀ a, StateT S (orec (A * S) (λ p, (B (fst p)) * S)%type) (B a)) →
+    (∀ a, StateT S (orec (A * S) (λ p, (B (fst p)) * S)%type) (B a))
+  ) a (s : S) : partial (B a * S)%type
+:=
+  pfix
+    (A := (A * S)%type)
+    (B := λ p, ((B (fst p)) * S)%type)
+    (λ p, F call (fst p) (snd p)) (a, s).
+
+Arguments pfixState {S A B} & F.
