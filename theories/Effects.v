@@ -39,14 +39,33 @@ Definition pfixRec2 {A B C}
   (F :
     (∀ a b, Rec (A * B) (λ p, C (fst p) (snd p)) (C a b)) →
     (∀ a b, Rec (A * B) (λ p, C (fst p) (snd p)) (C a b))
-  ) a b : partial (C (fst (a,b)) (snd (a,b)))
+  ) a b : partial (C a b)
 :=
-  pfixRec
-    (A := A * B)
-    (B := λ p, C (fst p) (snd p))
-    (λ f p, F (λ a b, f (a,b)) (fst p) (snd p)) (a,b).
+  Eval cbn zeta in
+  let def :=
+    pfixRec
+      (A := A * B)
+      (B := λ p, C (fst p) (snd p))
+      (λ f p, F (λ a b, f (a,b)) (fst p) (snd p)) (a,b)
+  in def.
 
 Arguments pfixRec2 {A B C} & F.
+
+Definition pfixRec3 {A B C D}
+  (F :
+    (∀ a b c, Rec (A * B * C) (λ '(a,b,c), D a b c) (D a b c)) →
+    (∀ a b c, Rec (A * B * C) (λ '(a,b,c), D a b c) (D a b c))
+  ) a b c : partial (D a b c)
+:=
+  Eval cbn zeta in
+  let def :=
+    pfixRec
+      (A := A * B * C)
+      (B := λ '(a,b,c), D a b c)
+      (λ f '(a,b,c), F (λ a b c, f (a,b,c)) a b c) (a,b,c)
+  in def.
+
+Arguments pfixRec3 {A B C D} & F.
 
 (** Exceptions *)
 
@@ -110,6 +129,20 @@ Definition pfixExn {E A B}
 
 Arguments pfixExn {E A B} & F.
 
+Definition pfixExn2 {E A B C}
+  (F :
+    (∀ a b, ExnT E (orec (A * B) (λ p, exn E (C (fst p) (snd p)))) (C a b)) →
+    (∀ a b, ExnT E (orec (A * B) (λ p, exn E (C (fst p) (snd p)))) (C a b))
+  ) a b : ExnT E partial (C a b) :=
+  Eval cbn zeta in
+  let def :=
+    pfixExn
+      (A := A * B) (B := λ p, C (fst p) (snd p))
+      (λ f p, F (λ a b, f (a,b)) (fst p) (snd p)) (a, b)
+  in def.
+
+Arguments pfixExn2 {E A B C} & F.
+
 (** State *)
 
 Class MonadState S (M : Type → Type) := {
@@ -166,3 +199,23 @@ Definition pfixState {S A B}
     (λ p, F call (fst p) (snd p)) (a, s).
 
 Arguments pfixState {S A B} & F.
+
+Definition pfixState2 {S A B C}
+  (F :
+    (∀ a b,
+      StateT S (orec ((A * B) * S) (λ p, C (fst (fst p)) (snd (fst p)) * S)%type) (C a b)
+    ) →
+    (∀ a b,
+      StateT S (orec ((A * B) * S) (λ p, C (fst (fst p)) (snd (fst p)) * S)%type) (C a b)
+    )
+  ) a b :
+  StateT S partial (C a b) :=
+  Eval cbn zeta in
+  let def :=
+    pfixState
+      (B := λ p, C (fst p) (snd p))
+      (λ self p, F (λ a b, self (a, b)) (fst p) (snd p))
+      (a,b)
+  in def.
+
+Arguments pfixState2 {S A B C} & F.

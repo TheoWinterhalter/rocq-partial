@@ -215,6 +215,56 @@ Definition typeof_x
   (Γ : list ty) (t : tm) : _ → exn string ty :=
   value (typeof (Γ, t)).
 
+(** More examples to be put in their own files later *)
+
+(** Calls read like ordinary applications of the function being defined. *)
+Definition gcd : nat → nat → partial nat :=
+  pfixRec2 (λ gcd a b,
+    if b =? 0 then ret a else gcd b (a mod b)
+  ).
+
+(** Nested recursive calls, via the monad. *)
+Definition ack : nat → nat → partial nat :=
+  pfixRec2 (λ ack m n,
+    match m, n with
+    | 0, _ => ret (S n)
+    | S m', 0 => ack m' 1
+    | S m', S n' => k ← ack m n' ;; ack m' k
+    end
+  ).
+
+(** Three arguments. *)
+Definition sum_range : nat → nat → nat → partial nat :=
+  pfixRec3 (λ sum lo hi acc,
+    if hi <? lo then ret acc else sum (S lo) hi (acc + lo)
+  ).
+
+(** Exceptions. *)
+Definition div_exact : nat → nat → ExnT string partial nat :=
+  pfixExn2 (λ self a b,
+    if b =? 0 then raise "division by zero"%string
+    else if a =? 0 then ret 0
+    else if a <? b then raise "not divisible"%string
+    else r ← self (a - b) b ;; ret (S r)).
+
+(** State: counts the calls. *)
+Definition gcd_calls : nat → nat → nat → partial (nat * nat) :=
+  pfixState2 (λ self a b,
+    modify S ;;
+    if b =? 0 then ret a else self b (a mod b)).
+
+(** A body made only of calls never fixes its own result type: this is what
+    the [&] hints are for. *)
+Definition countdown : nat → nat → partial nat :=
+  pfixRec2 (λ self a b, if a =? 0 then self 0 b else self (a - 1) b).
+
+(* Unfolded wrappers for extraction *)
+Definition gcd_x a b : _ → nat := value (gcd a b).
+Definition ack_x a b : _ → nat := value (ack a b).
+Definition sum_range_x a b c : _ → nat := value (sum_range a b c).
+Definition div_exact_x a b : _ → exn string nat := value (div_exact a b).
+Definition gcd_calls_x a b s : _ → nat * nat := value (gcd_calls a b s).
+
 (** Extraction *)
 
 (* Unfolding for extraction *)
