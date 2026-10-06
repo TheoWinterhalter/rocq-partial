@@ -29,8 +29,11 @@ Definition Rec A (B : A → Type) (C : Type) : Type := orec A B C.
 #[export] Instance Lift_partial_Rec {A B} : MonadLift partial (Rec A B) :=
   λ C u, lift u.
 
-Definition pfixRec {A B} (f : ∀ x : A, Rec A B (B x)) : ∀ x, partial (B x) :=
-  pfix f.
+Definition pfixRec {A B} (F : (∀ a, Rec A B (B a)) → ∀ a, Rec A B (B a)) a :
+  partial (B a)
+:= pfix (F (λ a, call a)) a.
+
+Arguments pfixRec {A B} & F.
 
 (** Exceptions *)
 
