@@ -286,4 +286,5 @@ Extraction "extracted.ml" value
   collatz_x test
   collatz_steps_x total_steps_x total_steps_safe_x
   collatz_trace_x collatz_max_x collatz_len_x sum_lens_x
-  id_nat good_app bad_app good_if bad_if typeof_x.
+  id_nat good_app bad_app good_if bad_if typeof_x
+  gcd_x ack_x sum_range_x div_exact_x gcd_calls_x.

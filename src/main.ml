@@ -44,5 +44,15 @@ let () =
   check "type_of bad_app" (show_tc (typeof_x [] bad_app)) "exception \"argument type mismatch\"" ;
   check "type_of good_if" (show_tc (typeof_x [] good_if)) "success nat" ;
   check "type_of bad_if" (show_tc (typeof_x [] bad_if)) "exception \"branches have different types\"" ;
+  (* more tests *)
+  check "gcd 48 18"              (string_of_int (gcd_x 48 18)) "6";
+  check "ack 2 3"                (string_of_int (ack_x 2 3)) "9";
+  check "sum_range 1 100 0"      (string_of_int (sum_range_x 1 100 0)) "5050";
+  check "div_exact 42 7"         (show_exn (div_exact_x 42 7)) "success 6";
+  check "div_exact 5 0"          (show_exn (div_exact_x 5 0)) "exception \"division by zero\"";
+  check "div_exact 7 3"          (show_exn (div_exact_x 7 3)) "exception \"not divisible\"";
+  let (r, calls) = gcd_calls_x 48 18 0 in
+  check "gcd_calls 48 18 (result)" (string_of_int r) "6";
+  check "gcd_calls 48 18 (calls)"  (string_of_int calls) "4";
   (* done *)
   print_endline "all tests passed"
