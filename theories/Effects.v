@@ -31,7 +31,7 @@ Definition Rec A (B : A → Type) (C : Type) : Type := orec A B C.
 
 Definition pfixRec {A B} (F : (∀ a, Rec A B (B a)) → ∀ a, Rec A B (B a)) a :
   partial (B a)
-:= pfix (F (λ a, call a)) a.
+:= pfix (F call) a.
 
 Arguments pfixRec {A B} & F.
 
