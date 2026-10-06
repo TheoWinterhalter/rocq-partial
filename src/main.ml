@@ -1,10 +1,8 @@
 open Extracted
 
-let str l = String.of_seq (List.to_seq l)
-
 let show_exn = function
   | Success n -> Printf.sprintf "success %d" n
-  | Exception e -> Printf.sprintf "exception %S" (str e)
+  | Exception e -> Printf.sprintf "exception %S" e
 
 let show_list l = "[" ^ String.concat ";" (List.map string_of_int l) ^ "]"
 
@@ -18,7 +16,7 @@ let rec show_ty = function
 
 let show_tc = function
   | Success ty -> Printf.sprintf "success %s" (show_ty ty)
-  | Exception e -> Printf.sprintf "exception %S" (str e)
+  | Exception e -> Printf.sprintf "exception %S" e
 
 let check name got expected =
   Printf.printf "%-34s %s\n" name (if got = expected then "ok" else "FAIL: got " ^ got);

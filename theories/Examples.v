@@ -1,6 +1,6 @@
 From Equations Require Import Equations.
 From Stdlib Require Import
-  Extraction ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlString.
+  Extraction ExtrOcamlBasic ExtrOcamlNatInt ExtrOcamlNativeString.
 From Stdlib Require Import Utf8 String List Arith Lia.
 From Partial Require Import Util Monad Partial PFix Effects.
 Import MonadNotations.
@@ -279,6 +279,8 @@ Definition collatz_trace_x n l : _ → nat * list nat :=
   value (collatz_trace n l).
 Definition collatz_len_x n : _ → nat := value (collatz_len n).
 Definition sum_lens_x n m : _ → nat * nat := value (sum_lens n m).
+
+Extraction Inline pfixRec pfixExn pfixState Rec def.
 
 Extraction "extracted.ml" value
   collatz_x test
