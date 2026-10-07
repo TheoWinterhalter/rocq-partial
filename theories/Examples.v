@@ -17,6 +17,12 @@ Definition vidT : ∀ n, Vector.t nat n → partial (Vector.t nat n) :=
   #pfix f (n : nat) (v : Vector.t nat n) : Vector.t nat n,
     r ← f n v ;; ret r.
 
+(** Using Equations *)
+Equations foo : nat → partial nat :=
+  foo := pfixRec foo_rec
+where foo_rec : ((nat → Rec nat (λ _, nat) nat) → (nat → Rec nat (λ _, nat) nat)) :=
+  foo_rec rec n := ret n.
+
 Definition collatz : nat → partial nat :=
   #pfix collatz n,
     if n =? 1 then ret 0
