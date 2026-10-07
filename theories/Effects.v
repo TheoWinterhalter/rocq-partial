@@ -245,7 +245,16 @@ Arguments pfixStateU {S A} B z & F.
 
 Notation "#pfix[ P ] f x .. y , t" :=
   (λ x, .. (λ y,
-     P (λ _, _)
+     P (curry (λ x, .. (curry (λ y, curry_ret _)) ..))
+       (existT x .. (existT y tt) ..)
+       (λ self,
+          let f := (λ x, .. (λ y, self (existT x .. (existT y tt) ..)) ..) in
+          curryD (λ x, .. (curryD (λ y, curry_retD t)) ..))) ..)
+  (at level 200, P at level 0, f ident, x binder, right associativity).
+
+Notation "#pfix[ P ] f x .. y : T , t" :=
+  (λ x, .. (λ y,
+     P (curry (λ x, .. (curry (λ y, curry_ret T)) ..))
        (existT x .. (existT y tt) ..)
        (λ self,
           let f := (λ x, .. (λ y, self (existT x .. (existT y tt) ..)) ..) in
@@ -254,7 +263,16 @@ Notation "#pfix[ P ] f x .. y , t" :=
 
 Notation "#pfix f x .. y , t" :=
   (λ x, .. (λ y,
-     pfixRecU (λ _, _)
+     pfixRecU (curry (λ x, .. (curry (λ y, curry_ret _)) ..))
+       (existT x .. (existT y tt) ..)
+       (λ self,
+          let f := (λ x, .. (λ y, self (existT x .. (existT y tt) ..)) ..) in
+          curryD (λ x, .. (curryD (λ y, curry_retD t)) ..))) ..)
+  (at level 200, f ident, x binder, right associativity).
+
+Notation "#pfix f x .. y : T , t" :=
+  (λ x, .. (λ y,
+     pfixRecU (curry (λ x, .. (curry (λ y, curry_ret T)) ..))
        (existT x .. (existT y tt) ..)
        (λ self,
           let f := (λ x, .. (λ y, self (existT x .. (existT y tt) ..)) ..) in

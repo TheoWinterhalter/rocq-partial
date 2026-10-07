@@ -41,6 +41,13 @@ Defined.
 Arguments existT {A P}.
 Notation "( x ; y )" := (existT x y).
 
+Definition curry {A B C} (f : ∀ (x : A) (y : B x), C x y) :
+  ∀ (z : {x : A & B x}), C (projT1 z) (projT2 z) :=
+  λ '(x ; y), f x y.
+Arguments curry {A B C} & f.
+
+Definition curry_ret {X} (x : X) : unit → X := λ _, x.
+
 Definition curryD {A B} {R : {x : A & B x} → Type} (f : ∀ (x : A) (y : B x), R (x ; y)) :
   ∀ z, R z :=
   λ '(x ; y), f x y.

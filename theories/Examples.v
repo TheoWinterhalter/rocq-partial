@@ -7,8 +7,18 @@ Import MonadNotations.
 
 Extraction Language OCaml.
 
+(** Dependent example *)
+Definition vid : ∀ n, Vector.t nat n → partial (Vector.t nat n) :=
+  #pfix f (n : nat) (v : Vector.t nat n),
+    r ← f n v ;; ret r.
+
+(** With explicit return type *)
+Definition vidT : ∀ n, Vector.t nat n → partial (Vector.t nat n) :=
+  #pfix f (n : nat) (v : Vector.t nat n) : Vector.t nat n,
+    r ← f n v ;; ret r.
+
 Definition collatz : nat → partial nat :=
-  #pfix[ pfixRecU ] collatz n,
+  #pfix collatz n,
     if n =? 1 then ret 0
     else
       x ← collatz (if Nat.even n then n / 2 else 3 * n + 1) ;;
