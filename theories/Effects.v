@@ -219,3 +219,28 @@ Definition pfixState2 {S A B C}
   in def.
 
 Arguments pfixState2 {S A B C} & F.
+
+(** Some nicer notations for fixed points *)
+
+Definition pfixRecU {A} (B : A → Type) (z : A)
+  (F : (∀ a, Rec A B (B a)) → (∀ a, Rec A B (B a))) : partial (B z) :=
+  pfixRec F z.
+Arguments pfixRecU {A} B z & F.
+
+Notation "#pfix[ P ] f x .. y , t" :=
+  (λ x, .. (λ y,
+     P (λ _, _)
+       (existT x .. (existT y tt) ..)
+       (λ self,
+          let f := (λ x, .. (λ y, self (existT x .. (existT y tt) ..)) ..) in
+          curryD (λ x, .. (curryD (λ y, curry_retD t)) ..))) ..)
+  (at level 200, P at level 0, f ident, x ident, right associativity).
+
+Notation "#pfix f x .. y , t" :=
+  (λ x, .. (λ y,
+     pfixRecU (λ _, _)
+       (existT x .. (existT y tt) ..)
+       (λ self,
+          let f := (λ x, .. (λ y, self (existT x .. (existT y tt) ..)) ..) in
+          curryD (λ x, .. (curryD (λ y, curry_retD t)) ..))) ..)
+  (at level 200, f ident, x ident, right associativity).

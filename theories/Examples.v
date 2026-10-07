@@ -8,12 +8,11 @@ Import MonadNotations.
 Extraction Language OCaml.
 
 Definition collatz : nat → partial nat :=
-  pfixRec (λ collatz n,
+  #pfix[ pfixRecU ] collatz n,
     if n =? 1 then ret 0
     else
       x ← collatz (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (S x)
-  ).
+      ret (S x).
 
 Definition test : nat → partial nat :=
   pfixRec (λ test n,

@@ -37,3 +37,15 @@ Definition hFalse :=
 Proof.
   intros [].
 Defined.
+
+Arguments existT {A P}.
+Notation "( x ; y )" := (existT x y).
+
+Definition curryD {A B} {R : {x : A & B x} → Type} (f : ∀ (x : A) (y : B x), R (x ; y)) :
+  ∀ z, R z :=
+  λ '(x ; y), f x y.
+Arguments curryD {A B R} & f.
+
+Definition curry_retD {R : unit → Type} (x : R tt) : ∀ u, R u :=
+  λ u, match u with tt => x end.
+Arguments curry_retD {R} & x.
