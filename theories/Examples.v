@@ -212,7 +212,7 @@ Definition gcd : nat → nat → partial nat :=
 
 (** Nested recursive calls, via the monad. *)
 Definition ack : nat → nat → partial nat :=
-  #pfix ack (m : nat) n,
+  #pfix ack (m : nat) (n : nat),
     match m, n with
     | 0, _ => ret (S n)
     | S m', 0 => ack m' 1

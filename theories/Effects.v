@@ -250,7 +250,7 @@ Notation "#pfix[ P ] f x .. y , t" :=
        (λ self,
           let f := (λ x, .. (λ y, self (existT x .. (existT y tt) ..)) ..) in
           curryD (λ x, .. (curryD (λ y, curry_retD t)) ..))) ..)
-  (at level 200, P at level 0, f binder, x binder, right associativity).
+  (at level 200, P at level 0, f ident, x binder, right associativity).
 
 Notation "#pfix f x .. y , t" :=
   (λ x, .. (λ y,
@@ -259,4 +259,4 @@ Notation "#pfix f x .. y , t" :=
        (λ self,
           let f := (λ x, .. (λ y, self (existT x .. (existT y tt) ..)) ..) in
           curryD (λ x, .. (curryD (λ y, curry_retD t)) ..))) ..)
-  (at level 200, f binder, x binder, right associativity).
+  (at level 200, f ident, x binder, right associativity).
