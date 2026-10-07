@@ -57,7 +57,7 @@ jobs:
             endGroup
           script: |
             startGroup "Build project"
-              opam exec -- make -j 2
+              opam exec -- make test -j 2
             endGroup
           uninstall: |
             startGroup "Clean project"
