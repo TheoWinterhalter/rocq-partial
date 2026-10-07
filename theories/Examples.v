@@ -206,7 +206,6 @@ Definition typeof_x
 
 (** More examples to be put in their own files later *)
 
-(** Calls read like ordinary applications of the function being defined. *)
 Definition gcd : nat → nat → partial nat :=
   #pfix gcd a b,
     if b =? 0 then ret a else gcd b (a mod b).
