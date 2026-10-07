@@ -29,12 +29,12 @@ clean: Makefile.rocq
 	@rm -f $(SRC_DIR)/extracted.ml $(SRC_DIR)/extracted.mli $(EXE)
 	@rm -f $(SRC_DIR)/*.cmi $(SRC_DIR)/*.cmx $(SRC_DIR)/*.cmo $(SRC_DIR)/*.o
 
-Makefile.rocq: _CoqProject
-	$(COQBIN)rocq makefile -f _CoqProject -o Makefile.rocq
+Makefile.rocq: _RocqProject
+	$(COQBIN)rocq makefile -f _RocqProject -o Makefile.rocq
 
 # Without these, the catch-all rule below would try to "build" the sources
 # (and fail) by forwarding them to Makefile.rocq.
-force _CoqProject Makefile: ;
+force _RocqProject Makefile: ;
 $(SRC_DIR)/extracted.ml $(SRC_DIR)/extracted.mli $(SRC_DIR)/main.ml: ;
 
 %: Makefile.rocq force
