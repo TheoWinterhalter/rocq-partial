@@ -14,14 +14,14 @@ Unset Equations With Funext.
 
 Inductive orec A B C :=
 | o_ret (x : C)
-| o_grd (P : hProp) (κ : P → orec A B C)
-| o_rec (x : A) (κ : B x → orec A B C).
+| o_grd (P : hProp) (k : P → orec A B C)
+| o_rec (x : A) (k : B x → orec A B C).
 
 Arguments o_ret {A B C}.
 Arguments o_grd {A B C}.
 Arguments o_rec {A B C}.
 
-Section Graph.
+Section Fix.
 
   Context {A B} (f : ∀ (x : A), orec A B (B x)).
 
@@ -29,30 +29,30 @@ Section Graph.
   | ret_graph x :
       orec_graph (o_ret x) x
 
-  | grd_graph (P : hProp) κ v (h : P) :
-      orec_graph (κ h) v →
-      orec_graph (o_grd P κ) v
+  | grd_graph (P : hProp) k v (h : P) :
+      orec_graph (k h) v →
+      orec_graph (o_grd P k) v
 
-  | rec_graph x κ v w :
+  | rec_graph x k v w :
       orec_graph (f x) v →
-      orec_graph (κ v) w →
-      orec_graph (o_rec x κ) w.
+      orec_graph (k v) w →
+      orec_graph (o_rec x k) w.
 
   Definition graph x v :=
     orec_graph (f x) v.
 
   Inductive orec_lt {a} : A → orec A B (B a) → Prop :=
-  | guard_lt P κ h x :
-      orec_lt x (κ h) →
-      orec_lt x (o_grd P κ)
+  | guard_lt P k h x :
+      orec_lt x (k h) →
+      orec_lt x (o_grd P k)
 
-  | top_lt x κ :
-      orec_lt x (o_rec x κ)
+  | top_lt x k :
+      orec_lt x (o_rec x k)
 
-  | rec_lt x κ v y :
+  | rec_lt x k v y :
         graph x v →
-        orec_lt y (κ v) →
-        orec_lt y (o_rec x κ).
+        orec_lt y (k v) →
+        orec_lt y (o_rec x k).
 
   Derive Signature for orec_graph orec_lt.
   Derive NoConfusion NoConfusionHom for orec.
@@ -170,12 +170,12 @@ Section Graph.
      That's probably a bug/shortcoming of equation but for now
      we derive explicitly the two inversion principles that are required.
    *)
-  Lemma orec_graph_rec_inv {a x κ} {w : B a} (e : orec_graph (o_rec x κ) w) :
-    ∃ v, orec_graph (f x) v ∧ orec_graph (κ v) w.
+  Lemma orec_graph_rec_inv {a x k} {w : B a} (e : orec_graph (o_rec x k) w) :
+    ∃ v, orec_graph (f x) v ∧ orec_graph (k v) w.
   Proof.
     refine (match e in orec_graph m r return
                   match m with
-                  | o_rec x κ => ∃ v, orec_graph (f x) v ∧ orec_graph (κ v) r
+                  | o_rec x k => ∃ v, orec_graph (f x) v ∧ orec_graph (k v) r
                   | _ => True
                   end
             with
@@ -191,8 +191,8 @@ Section Graph.
     (ha : ∀ x, orec_lt x e → partial_lt x a)
     (r : ∀ y, domain y → partial_lt y a → oimage (f y)) : oimage e :=
     orec_inst (o_ret v) de da ha r := ⟨ v ⟩ ;
-    orec_inst (o_grd P κ) de da ha r := ⟨ ((orec_inst (κ _) _ _ _ r)) ∙1 ⟩ ;
-    orec_inst (o_rec x κ) de da ha r := ⟨ ((orec_inst (κ ((r x _ _) ∙1)) _ _ _ r)) ∙1 ⟩.
+    orec_inst (o_grd P k) de da ha r := ⟨ ((orec_inst (k _) _ _ _ r)) ∙1 ⟩ ;
+    orec_inst (o_rec x k) de da ha r := ⟨ ((orec_inst (k ((r x _ _) ∙1)) _ _ _ r)) ∙1 ⟩.
   Proof.
     - constructor.
     - red in de. destruct de as [v de]. depelim de. assumption.
@@ -247,32 +247,32 @@ Section Graph.
 
   Scheme orec_graph_ind_dep := Induction for orec_graph Sort Prop.
 
-  Definition rec_pack {a} x (κ : B x → orec A B (B a)) (s : oimage (f x))
-  (t : oimage (κ (proj1_sig s))) : oimage (o_rec x κ) :=
+  Definition rec_pack {a} x (k : B x → orec A B (B a)) (s : oimage (f x))
+  (t : oimage (k (proj1_sig s))) : oimage (o_rec x k) :=
     exist _ (proj1_sig t)
-      (rec_graph x κ (proj1_sig s) (proj1_sig t) (proj2_sig s) (proj2_sig t)).
+      (rec_graph x k (proj1_sig s) (proj1_sig t) (proj2_sig s) (proj2_sig t)).
 
-  Lemma rec_pack_eq {a} x (κ : B x → orec A B (B a)) (s s' : oimage (f x)) t t' :
+  Lemma rec_pack_eq {a} x (k : B x → orec A B (B a)) (s s' : oimage (f x)) t t' :
     s = s' →
-    (∀ t'' : oimage (κ (proj1_sig s)), t = t'') →
-    rec_pack x κ s t = rec_pack x κ s' t'.
+    (∀ t'' : oimage (k (proj1_sig s)), t = t'') →
+    rec_pack x k s t = rec_pack x k s' t'.
   Proof. intros E H. destruct E. f_equal. apply H. Qed.
 
   Lemma oimage_prop_aux {a} (o : orec A B (B a)) v (d : orec_graph o v) :
     ∀ s' : oimage o, ⟨ v | d ⟩ = s'.
   Proof.
-    induction d as [a x | a P κ v h d ih | a x κ v1 w e1 ih1 e2 ih2]
+    induction d as [a x | a P k v h d ih | a x k v1 w e1 ih1 e2 ih2]
     using orec_graph_ind_dep.
     - intros [w d']. depelim d'. reflexivity.
     - intros [w d']. depelim d'.
       assert (h0 = h) as ->. { apply isprop. }
-      exact (f_equal (λ s : oimage (κ h),
-              ⟨ proj1_sig s | grd_graph P κ (proj1_sig s) h (proj2_sig s) ⟩)
+      exact (f_equal (λ s : oimage (k h),
+              ⟨ proj1_sig s | grd_graph P k (proj1_sig s) h (proj2_sig s) ⟩)
             (ih ⟨ w | d' ⟩)).
     - intros [w' d']. depelim d'.
       match goal with
       | |- _ = ⟨ ?w' | rec_graph _ _ ?v1' _ ?e1' ?e2' ⟩ =>
-          exact (rec_pack_eq x κ ⟨ v1 | e1 ⟩ ⟨ v1' | e1' ⟩ ⟨ w | e2 ⟩ ⟨ w' | e2' ⟩
+          exact (rec_pack_eq x k ⟨ v1 | e1 ⟩ ⟨ v1' | e1' ⟩ ⟨ w | e2 ⟩ ⟨ w' | e2' ⟩
                   (ih1 _) ih2)
       end.
   Qed.
@@ -288,7 +288,95 @@ Section Graph.
                  (oimage_prop x (f x) (exist _ v hv) (exist _ w hw))).
   Qed.
 
-End Graph.
+  (** Functional induction on fixed points *)
+
+  Abbreviation precond := (A → Prop).
+  Abbreviation postcond := (∀ x, B x → Prop).
+
+  Fixpoint orec_ind_step a (pre : precond) (post : postcond) (o : orec A B _) :=
+    match o with
+    | o_ret v => post a v
+    | o_grd P k => ∀ h, orec_ind_step a pre post (k h)
+    | o_rec x k => pre x ∧ ∀ v, post x v → orec_ind_step a pre post (k v)
+    end.
+
+  Definition funind (pre : precond) post :=
+    ∀ x, pre x → orec_ind_step x pre post (f x).
+
+  Lemma orec_graph_inst_ind_step pre post x o v :
+    funind pre post →
+    orec_ind_step x pre post o →
+    pre x →
+    orec_graph o v →
+    post x v.
+  Proof.
+    intros hind h hpre hgraph.
+    induction hgraph as [x v | x P k v hP hh ih | x y k v w hy ihy hk ihk].
+    all: cbn in *.
+    - assumption.
+    - apply ih. all: eauto.
+    - destruct h as [hpy hv].
+      apply ihk. 2: assumption.
+      apply hv. apply ihy. 2: assumption.
+      apply hind. assumption.
+  Qed.
+
+  Lemma funind_graph pre post x v :
+    funind pre post →
+    pre x →
+    graph x v →
+    post x v.
+  Proof.
+    intros h hpre hgraph.
+    eapply orec_graph_inst_ind_step.
+    all: eauto.
+  Qed.
+
+  Lemma def_ind pre post x h :
+    funind pre post →
+    pre x →
+    post x (def x h).
+  Proof.
+    intros ho hpre.
+    pose proof def_graph_sound.
+    eapply funind_graph. all: eauto.
+  Qed.
+
+  (** Computing the domain, easier than using the graph *)
+
+  Fixpoint comp_domain {a} (o : orec A B a) :=
+    match o with
+    | o_ret v => True
+    | o_grd P k => P ∧ ∀ h, comp_domain (k h)
+    | o_rec x k => domain x ∧ ∀ v, graph x v → comp_domain (k v)
+    end.
+
+  Lemma comp_domain_orec_domain a (o : orec A B (B a)) :
+    comp_domain o →
+    orec_domain o.
+  Proof.
+    intros h.
+    induction o as [w | P k ih | x k ih] in h |- *.
+    - eexists. constructor.
+    - simpl in h. destruct h as [hP h].
+      specialize (h hP). apply ih in h. destruct h as [w h].
+      eexists. econstructor. eassumption.
+    - simpl in h. destruct h as [[v hx] hk].
+      specialize (hk v hx). apply ih in hk. destruct hk as [w h].
+      eexists. econstructor. all: eassumption.
+  Qed.
+
+  Lemma compute_domain x :
+    comp_domain (f x) →
+    domain x.
+  Proof.
+    apply comp_domain_orec_domain.
+  Qed.
+
+  (* Now we can let it compute *)
+  Transparent wf_partial.
+
+End Fix.
 
 #[refine]
 Definition pfix {A B} (f : ∀ (x : A), orec A B (B x)) (a : A) : partial (B a) :=
@@ -370,3 +458,27 @@ Definition o_lift {A B C} (u : partial C) : orec A B C :=
 
 #[export] Instance Lift_partial_orec {A B} : MonadLift partial (orec A B) :=
   λ C u, o_lift u.
+
+(** Tactics for functional induction *)
+
+Tactic Notation "funind" constr(p) "in" hyp(h) :=
+  lazymatch type of h with
+  | graph ?f ?x ?v =>
+    lazymatch type of p with
+    | context [ funind _ _ _ ] =>
+      eapply funind_graph with (1 := p) in h ; [| try (exact I)]
+    | _ => fail "Argument should be of type funind"
+    end
+  | _ => fail "Hypothesis should be about graph"
+  end.
+
+Tactic Notation "funind" constr(p) "in" hyp(h) "as" ident(na) :=
+  lazymatch type of h with
+  | graph ?f ?x ?v =>
+    lazymatch type of p with
+    | context [ funind _ _ _ ] =>
+      eapply funind_graph with (1 := p) in h as na ; [| try (exact I)]
+    | _ => fail "Argument should be of type funind"
+    end
+  | _ => fail "Hypothesis should be about graph"
+  end.
