@@ -15,89 +15,81 @@ Definition collatz : nat → partial nat :=
       ret (S x).
 
 Definition test : nat → partial nat :=
-  pfixRec (λ test n,
+  #pfix test n,
     if n =? 0 then ret 0
     else
       k ← lift (collatz n) ;;
       r ← test (n - 1) ;;
-      ret (k + r)
-  ).
+      ret (k + r).
 
 (** Combining with effects, first exceptions *)
 
 (** Number of Collatz steps; raises on 0 (which would loop forever). *)
 Definition collatz_steps : nat → ExnT string partial nat :=
-  pfixExn (λ collatz_steps n,
+  #pfix[ pfixExnU ] collatz_steps n,
     if n =? 0 then raise "collatz: zero"%string
     else if n =? 1 then ret 0
     else
       r ← collatz_steps (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (S r)
-  ).
+      ret (S r).
 
 (**
   Sums [collatz_steps] over [n, n-1, ..., 0]. The exception raised at 0
   propagates through the recursion without any explicit matching.
 *)
 Definition total_steps : nat → ExnT string partial nat :=
-  pfixExn (λ total_steps n,
+  #pfix[ pfixExnU ] total_steps n,
     k ← lift (collatz_steps n) ;;
     if n =? 0 then ret k
     else
       r ← total_steps (n - 1) ;;
-      ret (k + r)
-  ).
+      ret (k + r).
 
 (** Same, but recovers from the error with [catch]. *)
 Definition total_steps_safe : nat → ExnT string partial nat :=
-  pfixExn (λ total_steps_safe n,
+  #pfix[ pfixExnU ] total_steps_safe n,
     k ← catch (lift (collatz_steps n)) (λ _, ret 0) ;;
     if n =? 0 then ret k
     else
       r ← total_steps_safe (n - 1) ;;
-      ret (k + r)
-  ).
+      ret (k + r).
 
 (** Now state *)
 
 (** Collatz, logging every visited value in the state. Returns the number of steps. *)
 Definition collatz_trace : nat → list nat → partial (nat * list nat) :=
-  pfixState (λ collatz_trace n,
+  #pfix[ pfixStateU ] collatz_trace n,
     modify (cons n) ;;
     if n =? 1 then ret 0
     else
       r ← collatz_trace (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (S r)
-  ).
+      ret (S r).
 
 (** Max value reached, with a step counter as state. *)
 Definition collatz_max : nat → nat → partial (nat * nat) :=
-  pfixState (λ collatz_max n,
+  #pfix[ pfixStateU ] collatz_max n,
     modify S ;;
     if n =? 1 then ret 1
     else
       m ← collatz_max (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (Nat.max n m)
-  ).
+      ret (Nat.max n m).
 
 (** A partial function typeofed from a stateful one through [liftT]. *)
 Definition collatz_len : nat → partial nat :=
-  pfixRec (λ collatz_len n,
+  #pfix collatz_len n,
     if n =? 1 then ret 0
     else
       r ← collatz_len (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (S r)
-  ).
+      ret (S r).
 
 Definition sum_lens : nat → nat → partial (nat * nat) :=
-  pfixState (λ sum_lens n,
+  #pfix[ pfixStateU ] sum_lens n,
     k ← lift (collatz_len n) ;;
     modify (Nat.add k) ;;
     if n =? 1 then ret 0
     else
       r ← sum_lens (n - 1) ;;
-      ret (k + r)
-  ).
+      ret (k + r).
 
 (** A tiny simply-typed lambda calculus. *)
 
@@ -124,22 +116,21 @@ Fixpoint lookup_ty (n : nat) (Γ : list ty) : option ty :=
   | _, _           => None
   end.
 
-Definition ty_eqb : ty * ty → ExnT string partial bool :=
-  pfixExn (λ ty_eqb '(A, B),
+Definition ty_eqb : ty → ty → ExnT string partial bool :=
+  #pfix[ pfixExnU ] ty_eqb A B,
     match A, B with
     | TNat, TNat => ret true
     | TBool, TBool => ret true
     | TArr A1 A2, TArr B1 B2 =>
-      b1 ← ty_eqb (A1, B1) ;;
-      b2 ← ty_eqb (A2, B2) ;;
+      b1 ← ty_eqb A1 B1 ;;
+      b2 ← ty_eqb A2 B2 ;;
       ret (b1 && b2)%bool
     | _, _ => ret false
-    end
-  ).
+    end.
 
 (** Type checking. *)
-Definition typeof : (list ty * tm) → ExnT string partial ty :=
-  pfixExn (λ typeof '(Γ, t),
+Definition typeof : list ty → tm → ExnT string partial ty :=
+  #pfix[ pfixExnU ] typeof Γ t,
     match t with
 
     | TVar x =>
@@ -158,11 +149,11 @@ Definition typeof : (list ty * tm) → ExnT string partial ty :=
         ret TBool
 
     | TApp f a =>
-        Tf ← typeof (Γ, f) ;;
-        Ta ← typeof (Γ, a) ;;
+        Tf ← typeof Γ f ;;
+        Ta ← typeof Γ a ;;
         match Tf with
         | TArr A B =>
-            b ← lift (ty_eqb (A, Ta)) ;;
+            b ← lift (ty_eqb A Ta) ;;
             if b then
               ret B
             else
@@ -172,16 +163,16 @@ Definition typeof : (list ty * tm) → ExnT string partial ty :=
         end
 
     | TLam A body =>
-        B ← typeof (A :: Γ, body) ;;
+        B ← typeof (A :: Γ) body ;;
         ret (TArr A B)
 
     | TIf c t e =>
-        Tc ← typeof (Γ, c) ;;
+        Tc ← typeof Γ c ;;
         match Tc with
         | TBool =>
-            Tt ← typeof (Γ, t) ;;
-            Te ← typeof (Γ, e) ;;
-            b ← lift (ty_eqb (Tt, Te)) ;;
+            Tt ← typeof Γ t ;;
+            Te ← typeof Γ e ;;
+            b ← lift (ty_eqb Tt Te) ;;
             if b then
               ret (Tt : ty)
             else
@@ -190,8 +181,7 @@ Definition typeof : (list ty * tm) → ExnT string partial ty :=
             raise "condition is not a boolean"%string
         end
 
-    end
-  ).
+    end.
 
 (** Some examples. *)
 
@@ -212,50 +202,47 @@ Definition bad_if : tm :=
 
 Definition typeof_x
   (Γ : list ty) (t : tm) : _ → exn string ty :=
-  value (typeof (Γ, t)).
+  value (typeof Γ t).
 
 (** More examples to be put in their own files later *)
 
 (** Calls read like ordinary applications of the function being defined. *)
 Definition gcd : nat → nat → partial nat :=
-  pfixRec2 (λ gcd a b,
-    if b =? 0 then ret a else gcd b (a mod b)
-  ).
+  #pfix gcd a b,
+    if b =? 0 then ret a else gcd b (a mod b).
 
 (** Nested recursive calls, via the monad. *)
 Definition ack : nat → nat → partial nat :=
-  pfixRec2 (λ ack m n,
+  #pfix ack m n,
     match m, n with
     | 0, _ => ret (S n)
     | S m', 0 => ack m' 1
     | S m', S n' => k ← ack m n' ;; ack m' k
-    end
-  ).
+    end.
 
 (** Three arguments. *)
 Definition sum_range : nat → nat → nat → partial nat :=
-  pfixRec3 (λ sum lo hi acc,
-    if hi <? lo then ret acc else sum (S lo) hi (acc + lo)
-  ).
+  #pfix sum lo hi acc,
+    if hi <? lo then ret acc else sum (S lo) hi (acc + lo).
 
 (** Exceptions. *)
 Definition div_exact : nat → nat → ExnT string partial nat :=
-  pfixExn2 (λ self a b,
+  #pfix[ pfixExnU ] self a b,
     if b =? 0 then raise "division by zero"%string
     else if a =? 0 then ret 0
     else if a <? b then raise "not divisible"%string
-    else r ← self (a - b) b ;; ret (S r)).
+    else r ← self (a - b) b ;; ret (S r).
 
 (** State: counts the calls. *)
 Definition gcd_calls : nat → nat → nat → partial (nat * nat) :=
-  pfixState2 (λ self a b,
+  #pfix[ pfixStateU ] self a b,
     modify S ;;
-    if b =? 0 then ret a else self b (a mod b)).
+    if b =? 0 then ret a else self b (a mod b).
 
 (** A body made only of calls never fixes its own result type: this is what
     the [&] hints are for. *)
 Definition countdown : nat → nat → partial nat :=
-  pfixRec2 (λ self a b, if a =? 0 then self 0 b else self (a - 1) b).
+  #pfix self a b, if a =? 0 then self 0 b else self (a - 1) b.
 
 (* Unfolded wrappers for extraction *)
 Definition gcd_x a b : _ → nat := value (gcd a b).

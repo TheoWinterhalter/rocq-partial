@@ -227,6 +227,22 @@ Definition pfixRecU {A} (B : A → Type) (z : A)
   pfixRec F z.
 Arguments pfixRecU {A} B z & F.
 
+Definition pfixExnU {E A} (B : A → Type) (z : A)
+  (F :
+    (∀ a, ExnT E (orec A (λ x, exn E (B x))) (B a)) →
+    (∀ a, ExnT E (orec A (λ x, exn E (B x))) (B a))
+  ) : ExnT E partial (B z) :=
+  pfixExn F z.
+Arguments pfixExnU {E A} B z & F.
+
+Definition pfixStateU {S A} (B : A → Type) (z : A)
+  (F :
+    (∀ a, StateT S (orec (A * S) (λ p, B (fst p) * S)%type) (B a)) →
+    (∀ a, StateT S (orec (A * S) (λ p, B (fst p) * S)%type) (B a))
+  ) : StateT S partial (B z) :=
+  pfixState F z.
+Arguments pfixStateU {S A} B z & F.
+
 Notation "#pfix[ P ] f x .. y , t" :=
   (λ x, .. (λ y,
      P (λ _, _)
