@@ -266,6 +266,32 @@ Definition sum_range_x a b c : _ → nat := value (sum_range a b c).
 Definition div_exact_x a b : _ → exn string nat := value (div_exact a b).
 Definition gcd_calls_x a b s : _ → nat * nat := value (gcd_calls a b s).
 
+(** Functional induction *)
+
+Definition div : nat → nat → partial nat :=
+  #pfix div n m,
+    match n with
+    | 0 => ret 0
+    | _ => S <*> div (n - m) m
+    end.
+
+Lemma div_below n m :
+  n < m →
+  ∀ q, div n m ↦ q →
+  match n with 0 => q = 0 | _ => q = 1 end.
+Proof.
+  intros h q hq.
+  refine (pfix_ind _ (λ '(n;(m;tt)), n < m) (λ '(n;(m;tt)) q, _) _ _ _ _ hq).
+  2: assumption.
+  cbn. red.
+  intros (n' & m' & []) hpre. cbn.
+  destruct n'. all: cbn - ["-"].
+  - reflexivity.
+  - split.
+    + lia.
+    + intros k hk. replace (S n' - m') with 0 in hk by lia. lia.
+Qed.
+
 (** Extraction *)
 
 (* Unfolding for extraction *)

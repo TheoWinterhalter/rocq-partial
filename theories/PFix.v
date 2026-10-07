@@ -461,6 +461,14 @@ Definition o_lift {A B C} (u : partial C) : orec A B C :=
 
 (** Tactics for functional induction *)
 
+Lemma pfix_ind {A B} (f : ∀ x, orec A B (B x)) pre post a v :
+  funind f pre post → pre a → pfix f a ↦ v → post a v.
+Proof.
+  intros hf hpre [hd ev].
+  eapply funind_graph. 1,2: eassumption.
+  rewrite <- (ev hd). exact (pfix_graph _ _ _ _ hd).
+Qed.
+
 Tactic Notation "funind" constr(p) "in" hyp(h) :=
   lazymatch type of h with
   | graph ?f ?x ?v =>
