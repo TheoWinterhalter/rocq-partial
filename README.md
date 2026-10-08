@@ -62,6 +62,14 @@ records recursive calls explicitly in a tree.
 We use it to define a graph of the function, and then its domain, and define the
 partial function by induction on said domain.
 
+## Installing
+
+You can install the package directly from `opam`.
+
+```sh
+opam install rocq-partial
+```
+
 ## Installing from source
 
 You may install from source using either `opam` or `make`.
