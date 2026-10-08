@@ -235,6 +235,14 @@ Definition ack : nat → nat → partial nat :=
     | S m', S n' => k ← ack m n' ;; ack m' k
     end.
 
+Definition ack_sum : nat → partial nat :=
+  #pfix ack_sum n,
+    if n =? 0 then ret 0
+    else
+      k ← lift (ack n n) ;;
+      l ← ack_sum (n - 1) ;;
+      ret (k + l).
+
 (** Three arguments. *)
 Definition sum_range : nat → nat → nat → partial nat :=
   #pfix sum lo hi acc,
