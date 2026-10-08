@@ -61,3 +61,24 @@ For general recursion, we use a general recursion monad, we call `orec`, which
 records recursive calls explicitly in a tree.
 We use it to define a graph of the function, and then its domain, and define the
 partial function by induction on said domain.
+
+## Installing from source
+
+You may install from source using either `opam` or `make`.
+With `opam`, proceed as follows:
+
+```sh
+opam install .
+```
+
+With `make` you may perform:
+```sh
+make
+make install
+```
+
+You can also run
+```sh
+make test
+```
+to run the extracted test in OCaml.
