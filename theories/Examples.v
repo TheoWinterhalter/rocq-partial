@@ -274,8 +274,8 @@ Definition bad_if :=
 
 (** Now state *)
 
-(* This raises an anomaly *)
-(* Definition list_sum : list nat → StateT nat partial nat :=
+(* This raises an anomaly instead of reporting type error *)
+(* Definition list_max : list nat → StateT nat partial nat :=
   put 0 ;;
   (#pfix[ pfixStateU ] aux l,
     match l with
@@ -286,10 +286,24 @@ Definition bad_if :=
     end) ;;
   get. *)
 
+Definition list_max ns : StateT nat partial nat :=
+  put 0 ;;
+  let aux : list nat → StateT nat partial nat :=
+    #pfix[ pfixStateU ] aux l,
+      match l with
+      | [] => get
+      | n :: l =>
+        modify (max n) ;;
+        aux l
+      end
+  in
+  aux ns ;;
+  get.
+
 Definition sum_nums : nat → nat → partial (nat * nat) :=
   #pfix[ pfixStateU ] aux n,
     modify (Nat.add n) ;;
-    if n =? 1 then ret 0
+    if n <=? 1 then ret 0
     else aux (n - 1).
 
 (** Extraction *)
@@ -307,7 +321,9 @@ Definition predX_x n := value (predX n).
 Definition as_finX_x m n := value (@as_finX m n).
 Definition eqty_x A B := value (eqty A B).
 Definition infer_x Γ t := value (infer Γ t).
+Definition list_max_x ns st := value (list_max ns st).
+Definition sum_nums_x n st := value (sum_nums n st).
 
 Extraction "extracted.ml" value
   minux_x pred_x pred'_x pred_twice_x gcd_x toeven_x as_fin_x predX_x as_finX_x
-  gcd_list_x eqty_x infer_x idbool ok good_if bad_if.
+  gcd_list_x eqty_x infer_x idbool ok good_if bad_if list_max_x sum_nums_x.

@@ -27,6 +27,9 @@ let check_int name got expected =
 let check_list name got expected =
   check name (show_list got) expected
 
+let check_pair name (x, st) expected =
+  check name (Printf.sprintf "(%d, %d)" x st) expected
+
 let check_fin name got expected =
   check name (show_fin got) expected
 
@@ -63,4 +66,10 @@ let () =
   check_exn show_ty "infer: var 0" (infer_x [] (Var 0)) "exception \"Unbound variable\"";
   check_exn show_ty "infer: var 0 in [bool]" (infer_x [Bool] (Var 0)) "success bool";
   check_exn show_ty "infer: tru tru" (infer_x [] (Ap (Tru, Tru))) "exception \"Cannot be applied\"";
+  check_pair "list_max [3;1;4;1;5] 7" (list_max_x [3; 1; 4; 1; 5] 7) "(5, 5)";
+  check_pair "list_max [] 7" (list_max_x [] 7) "(0, 0)";
+  check_pair "sum_nums 0 5" (sum_nums_x 0 5) "(0, 5)";
+  check_pair "sum_nums 1 0" (sum_nums_x 1 0) "(0, 1)";
+  check_pair "sum_nums 4 0" (sum_nums_x 4 0) "(0, 10)";
+  check_pair "sum_nums 4 10" (sum_nums_x 4 10) "(0, 20)";
   print_endline "all tests passed"

@@ -18,7 +18,7 @@ ocaml: rocq
 	@+$(MAKE) $(EXE)
 
 $(EXE): $(SRC_DIR)/extracted.mli $(SRC_DIR)/extracted.ml $(SRC_DIR)/main.ml
-	cd $(SRC_DIR) && $(OCAMLOPT) $(ML_FILES) -o $(notdir $(EXE))
+	cd $(SRC_DIR) && $(OCAMLOPT) -w -20 $(ML_FILES) -o $(notdir $(EXE))
 
 test: ocaml
 	./$(EXE)
