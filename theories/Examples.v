@@ -4,322 +4,297 @@ From Stdlib Require Import
 From Stdlib Require Import Utf8 String List Arith Lia.
 From Partial Require Import Util Monad Partial PFix Effects.
 Import MonadNotations.
+Import ListNotations.
 
 Extraction Language OCaml.
 
-(** Dependent example *)
-Definition vid : ∀ n, Vector.t nat n → partial (Vector.t nat n) :=
-  #pfix f (n : nat) (v : Vector.t nat n),
-    r ← f n v ;; ret r.
+(** * Gallery of examples
 
-(** With explicit return type *)
-Definition vidT : ∀ n, Vector.t nat n → partial (Vector.t nat n) :=
-  #pfix f (n : nat) (v : Vector.t nat n) : Vector.t nat n,
-    r ← f n v ;; ret r.
+  We showcase a few examples here, using effects beyond partiality or not.
 
-(** Using Equations *)
-Equations foo : nat → partial nat :=
-  foo := pfixRec foo_rec
-where foo_rec : ((nat → Rec nat (λ _, nat) nat) → (nat → Rec nat (λ _, nat) nat)) :=
-  foo_rec rec n := ret n.
-
-Definition collatz : nat → partial nat :=
-  #pfix collatz n,
-    if n =? 1 then ret 0
-    else
-      x ← collatz (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (S x).
-
-Definition test : nat → partial nat :=
-  #pfix test n,
-    if n =? 0 then ret 0
-    else
-      k ← lift (collatz n) ;;
-      r ← test (n - 1) ;;
-      ret (k + r).
-
-(** Combining with effects, first exceptions *)
-
-(** Number of Collatz steps; raises on 0 (which would loop forever). *)
-Definition collatz_steps : nat → ExnT string partial nat :=
-  #pfix[ pfixExnU ] collatz_steps n,
-    if n =? 0 then raise "collatz: zero"%string
-    else if n =? 1 then ret 0
-    else
-      r ← collatz_steps (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (S r).
-
-(**
-  Sums [collatz_steps] over [n, n-1, ..., 0]. The exception raised at 0
-  propagates through the recursion without any explicit matching.
 *)
-Definition total_steps : nat → ExnT string partial nat :=
-  #pfix[ pfixExnU ] total_steps n,
-    k ← lift (collatz_steps n) ;;
-    if n =? 0 then ret k
-    else
-      r ← total_steps (n - 1) ;;
-      ret (k + r).
 
-(** Same, but recovers from the error with [catch]. *)
-Definition total_steps_safe : nat → ExnT string partial nat :=
-  #pfix[ pfixExnU ] total_steps_safe n,
-    k ← catch (lift (collatz_steps n)) (λ _, ret 0) ;;
-    if n =? 0 then ret k
-    else
-      r ← total_steps_safe (n - 1) ;;
-      ret (k + r).
+(** ** Basic usage
 
-(** Now state *)
+  Partiality allow you to leave certain cases undefined.
+  This can be used in conjunction with the usual Rocq language constructs.
 
-(** Collatz, logging every visited value in the state. Returns the number of steps. *)
-Definition collatz_trace : nat → list nat → partial (nat * list nat) :=
-  #pfix[ pfixStateU ] collatz_trace n,
-    modify (cons n) ;;
-    if n =? 1 then ret 0
-    else
-      r ← collatz_trace (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (S r).
+*)
 
-(** Max value reached, with a step counter as state. *)
-Definition collatz_max : nat → nat → partial (nat * nat) :=
-  #pfix[ pfixStateU ] collatz_max n,
-    modify S ;;
-    if n =? 1 then ret 1
-    else
-      m ← collatz_max (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (Nat.max n m).
-
-(** A partial function typeofed from a stateful one through [liftT]. *)
-Definition collatz_len : nat → partial nat :=
-  #pfix collatz_len n,
-    if n =? 1 then ret 0
-    else
-      r ← collatz_len (if Nat.even n then n / 2 else 3 * n + 1) ;;
-      ret (S r).
-
-Definition sum_lens : nat → nat → partial (nat * nat) :=
-  #pfix[ pfixStateU ] sum_lens n,
-    k ← lift (collatz_len n) ;;
-    modify (Nat.add k) ;;
-    if n =? 1 then ret 0
-    else
-      r ← sum_lens (n - 1) ;;
-      ret (k + r).
-
-(** A tiny simply-typed lambda calculus. *)
-
-Inductive ty : Type :=
-| TNat
-| TBool
-| TArr : ty → ty → ty.
-
-Inductive tm : Type :=
-| TVar   : nat → tm
-| TNatLit : nat → tm
-| TTrue  : tm
-| TFalse : tm
-| TApp   : tm → tm → tm
-| TLam   : ty → tm → tm
-| TIf    : tm → tm → tm → tm.
-
-(** Contexts use de Bruijn indices: variable 0 is the newest binding. *)
-
-Fixpoint lookup_ty (n : nat) (Γ : list ty) : option ty :=
-  match n, Γ with
-  | 0, A :: _     => Some A
-  | S n', _ :: Γ' => lookup_ty n' Γ'
-  | _, _           => None
+Fixpoint minus (n m : nat) : partial nat :=
+  match n, m with
+  | 0, 0 => ret 0
+  | _, 0 => ret n
+  | S n, S m => minus n m
+  | _,_ => undefined
   end.
 
-Definition ty_eqb : ty → ty → ExnT string partial bool :=
-  #pfix[ pfixExnU ] ty_eqb A B,
-    match A, B with
-    | TNat, TNat => ret true
-    | TBool, TBool => ret true
-    | TArr A1 A2, TArr B1 B2 =>
-      b1 ← ty_eqb A1 B1 ;;
-      b2 ← ty_eqb A2 B2 ;;
-      ret (b1 && b2)%bool
-    | _, _ => ret false
-    end.
+(**
 
-(** Type checking. *)
-Definition typeof : list ty → tm → ExnT string partial ty :=
-  #pfix[ pfixExnU ] typeof Γ t,
-    match t with
+  It can also be used to restrict manually a domain.
+  But this requires proving the restriction is a mere proposition
+  (which can be proven using proof irrelevance if one doesn't mind).
 
-    | TVar x =>
-        match lookup_ty x Γ with
-        | Some A => ret A
-        | None   => raise "unbound variable"%string
-        end
+*)
 
-    | TNatLit _ =>
-        ret TNat
+Definition nonzero n :=
+  match n with
+  | 0 => hFalse
+  | _ => hTrue
+  end.
 
-    | TTrue =>
-        ret TBool
+Definition pred (n : nat) : partial nat :=
+  h ← guard (nonzero n) ;;
+  match n return nonzero n → _ with
+  | S k => λ _, ret k
+  | 0 => λ (h : False), match h with end
+  end h.
 
-    | TFalse =>
-        ret TBool
+(** In practice, using guard manually is often not needed: *)
 
-    | TApp f a =>
-        Tf ← typeof Γ f ;;
-        Ta ← typeof Γ a ;;
-        match Tf with
-        | TArr A B =>
-            b ← lift (ty_eqb A Ta) ;;
-            if b then
-              ret B
-            else
-              raise "argument type mismatch"%string
-        | _ =>
-            raise "application of a non-function"%string
-        end
+Definition pred' n : partial nat :=
+  match n with
+  | S k => ret k
+  | 0 => undefined
+  end.
 
-    | TLam A body =>
-        B ← typeof (A :: Γ) body ;;
-        ret (TArr A B)
+(** We can show [pred] and [pred'] are equivalent. *)
 
-    | TIf c t e =>
-        Tc ← typeof Γ c ;;
-        match Tc with
-        | TBool =>
-            Tt ← typeof Γ t ;;
-            Te ← typeof Γ e ;;
-            b ← lift (ty_eqb Tt Te) ;;
-            if b then
-              ret (Tt : ty)
-            else
-              raise "branches have different types"%string
-        | _ =>
-            raise "condition is not a boolean"%string
-        end
+Lemma pred_equiv n :
+  pred n ≈ pred' n.
+Proof.
+  split.
+  - cbn. split.
+    + intros [p h].
+      destruct n. 1: contradiction.
+      cbn. constructor.
+    + intros h.
+      destruct n. 1: contradiction.
+      exists I. cbn. constructor.
+  - intros p q. destruct n. 1: contradiction.
+    reflexivity.
+Qed.
 
-    end.
+(** We can also prove some other things *)
 
-(** Some examples. *)
+Lemma pred_S n :
+  pred (S n) ↦ n.
+Proof.
+  split.
+  - cbn. exists I. constructor.
+  - cbn. reflexivity.
+Qed.
 
-Definition id_nat : tm :=
-  TLam TNat (TVar 0).
+(** Partial definitions can be composed with one another (it's a monad). *)
 
-Definition good_app : tm :=
-  TApp id_nat (TNatLit 42).
+Definition pred_twice n :=
+  k ← pred n ;;
+  pred k.
 
-Definition bad_app : tm :=
-  TApp id_nat TTrue.
+(**
 
-Definition good_if : tm :=
-  TIf TTrue (TNatLit 0) (TNatLit 1).
+  More interestingly, we have access to general recursion.
+  Below we look at the naive implementation of Euclid's algorithm, which swaps
+  the arguments if they are not ordered properly.
+  Such a function is typically painful to make Rocq acccept, even though it is
+  total.
 
-Definition bad_if : tm :=
-  TIf TTrue (TNatLit 0) TFalse.
-
-Definition typeof_x
-  (Γ : list ty) (t : tm) : _ → exn string ty :=
-  value (typeof Γ t).
-
-(** More examples to be put in their own files later *)
+*)
 
 Definition gcd : nat → nat → partial nat :=
   #pfix gcd a b,
-    if b =? 0 then ret a else gcd b (a mod b).
+    if a <? b then gcd b a
+    else if b =? 0 then ret a
+    else gcd (a - b) b.
 
-(** Nested recursive calls, via the monad. *)
-Definition ack : nat → nat → partial nat :=
-  #pfix ack (m : nat) (n : nat),
-    match m, n with
-    | 0, _ => ret (S n)
-    | S m', 0 => ack m' 1
-    | S m', S n' => k ← ack m n' ;; ack m' k
-    end.
+(** We can show it is total after the fact. For instance with a measure. *)
 
-Definition ack_sum : nat → partial nat :=
-  #pfix ack_sum n,
-    if n =? 0 then ret 0
-    else
-      k ← lift (ack n n) ;;
-      l ← ack_sum (n - 1) ;;
-      ret (k + l).
-
-(** Three arguments. *)
-Definition sum_range : nat → nat → nat → partial nat :=
-  #pfix sum lo hi acc,
-    if hi <? lo then ret acc else sum (S lo) hi (acc + lo).
-
-(** Exceptions. *)
-Definition div_exact : nat → nat → ExnT string partial nat :=
-  #pfix[ pfixExnU ] self a b,
-    if b =? 0 then raise "division by zero"%string
-    else if a =? 0 then ret 0
-    else if a <? b then raise "not divisible"%string
-    else r ← self (a - b) b ;; ret (S r).
-
-(** State: counts the calls. *)
-Definition gcd_calls : nat → nat → nat → partial (nat * nat) :=
-  #pfix[ pfixStateU ] self a b,
-    modify S ;;
-    if b =? 0 then ret a else self b (a mod b).
-
-(** A body made only of calls never fixes its own result type: this is what
-    the [&] hints are for. *)
-Definition countdown : nat → nat → partial nat :=
-  #pfix self a b, if a =? 0 then self 0 b else self (a - 1) b.
-
-(* Unfolded wrappers for extraction *)
-Definition gcd_x a b : _ → nat := value (gcd a b).
-Definition ack_x a b : _ → nat := value (ack a b).
-Definition sum_range_x a b c : _ → nat := value (sum_range a b c).
-Definition div_exact_x a b : _ → exn string nat := value (div_exact a b).
-Definition gcd_calls_x a b s : _ → nat * nat := value (gcd_calls a b s).
-
-(** Functional induction *)
-
-Definition div : nat → nat → partial nat :=
-  #pfix div n m,
-    match n with
-    | 0 => ret 0
-    | _ => S <*> div (n - m) m
-    end.
-
-Lemma div_below n m :
-  n < m →
-  ∀ q, div n m ↦ q →
-  match n with 0 => q = 0 | _ => q = 1 end.
+Lemma gcd_def a b :
+  defined (gcd a b).
 Proof.
-  intros h q hq.
-  refine (pfix_ind _ (λ '(n;(m;tt)), n < m) (λ '(n;(m;tt)) q, _) _ _ _ _ hq).
-  2: assumption.
-  cbn. red.
-  intros (n' & m' & []) hpre. cbn.
-  destruct n'. all: cbn - ["-"].
-  - reflexivity.
-  - split.
-    + lia.
-    + intros k hk. replace (S n' - m') with 0 in hk by lia. lia.
+  apply compute_domain. cbn - ["<?"].
+  pose (mes := a + 2 * b).
+  lazymatch goal with
+  | |- ?g => assert (h : ∀ n, mes < n → g)
+  end.
+  { intros n hmes. induction n as [| n ih] in a, b, mes, hmes |- *. 1: lia.
+    destruct (a <? b) eqn: e.
+    - cbn - ["<?"]. split. 2: auto.
+      apply compute_domain. apply ih.
+      rewrite Nat.ltb_lt in e. lia.
+    - destruct (b =? 0) eqn: eb.
+      + cbn. constructor.
+      + cbn - ["<?"]. split. 2: auto.
+        apply compute_domain. apply ih.
+        rewrite Nat.ltb_ge in e.
+        rewrite Nat.eqb_neq in eb.
+        lia.
+  }
+  eapply h. econstructor.
 Qed.
+
+(** We can also use general recursion with dependently typed results *)
+
+Inductive even : nat → Prop :=
+| even0 : even 0
+| evenS n : even n → even (S (S n)).
+
+Arguments evenS {n}.
+
+Definition toeven : ∀ n, partial (even n) :=
+  #pfix aux n,
+    match n with
+    | 0 => ret even0
+    | 1 => lift undefined
+    | S (S n) => evenS <*> aux n
+    end.
+
+(** Note: we used [lift] to use [undefined] in the recursion monad. *)
+
+Inductive fin : nat → Type :=
+| f0 {n} : fin (S n)
+| fS {n} : fin n → fin (S n).
+
+Definition as_fin : ∀ {m}, nat → partial (fin m) :=
+  #pfix af (m : nat) (n : nat),
+    match m, n with
+    | 0, _ => lift undefined
+    | S m, 0 => ret f0
+    | S m, S n => fS <*> af m n
+    end.
+
+(** ** Effects
+
+  We can also use effects to, for instance, return exceptions instead of simply
+  being undefined.
+
+*)
+
+Definition predX n : ExnT string partial nat :=
+  match n with
+  | S k => ret k
+  | 0 => raise "pred of 0"%string
+  end.
+
+(** For #pfix, you need to specify the combinator. *)
+
+Definition as_finX : ∀ {m}, nat → ExnT string partial (fin m) :=
+  #pfix[ pfixExnU ] af (m : nat) (n : nat),
+    match m, n with
+    | 0, _ => raise "Too big to fit."%string
+    | S m, 0 => ret f0
+    | S m, S n => fS <*> af m n
+    end.
+
+(** Simply typed λ-calculus inference *)
+
+Inductive ty :=
+| Bool
+| Arr (A B : ty).
+
+Inductive tm :=
+| var (n : nat)
+| tru
+| fas
+| ifte (b t f : tm)
+| ap (u v : tm)
+| lam (A : ty) (t : tm).
+
+Definition ctx := list ty.
+
+Definition eqty : ty → ty → ExnT string partial unit :=
+  #pfix[ pfixExnU ] eqty A B,
+    match A, B with
+    | Bool, Bool => ret tt
+    | Arr A1 A2, Arr B1 B2 =>
+      eqty A1 B1 ;;
+      eqty A2 B2
+    | _, _ => raise "Arr ≠ Bool"%string
+    end.
+
+Definition infer : ctx → tm → ExnT string partial ty :=
+  #pfix[ pfixExnU ] inf Γ t,
+    match t with
+    | var n =>
+      match nth_error Γ n with
+      | Some A => ret A
+      | None => raise "Unbound variable"%string
+      end
+    | tru => ret Bool
+    | fas => ret Bool
+    | ifte b t f =>
+      iB ← inf Γ b ;;
+      (* eqty iB Bool ;; *)
+      T ← inf Γ t ;;
+      F ← inf Γ f ;;
+      (* eqty T F ;; *)
+      ret T
+    | ap u v =>
+      iAB ← inf Γ u ;;
+      match iAB with
+      | Arr A B =>
+        iA ← inf Γ v ;;
+        (* eqty iA A ;; *)
+        ret B
+      | _ => raise "Cannot be applied"%string
+      end
+    | lam A t =>
+      B ← inf (A :: Γ) t ;;
+      ret (Arr A B)
+    end.
+
+(** Some terms to test *)
+
+Definition idbool :=
+  lam Bool (var 0).
+
+Definition ok :=
+  ap idbool tru.
+
+Definition ko :=
+  ap idbool idbool.
+
+Definition good_if :=
+  ifte fas ok ok.
+
+Definition bad_if :=
+  ifte fas idbool ok.
+
+(** Now state *)
+
+(* This raises an anomaly *)
+(* Definition list_sum : list nat → StateT nat partial nat :=
+  put 0 ;;
+  (#pfix[ pfixStateU ] aux l,
+    match l with
+    | [] => get
+    | n :: l =>
+      modify (max n) ;;
+      aux l
+    end) ;;
+  get. *)
+
+Definition sum_nums : nat → nat → partial (nat * nat) :=
+  #pfix[ pfixStateU ] aux n,
+    modify (Nat.add n) ;;
+    if n =? 1 then ret 0
+    else aux (n - 1).
 
 (** Extraction *)
 
 (* Unfolding for extraction *)
-Definition collatz_x n : _ → nat := value (collatz n).
-Definition test_x n : _ → nat := value (test n).
-Definition collatz_steps_x n : _ → exn string nat := value (collatz_steps n).
-Definition total_steps_x n : _ → exn string nat := value (total_steps n).
-Definition total_steps_safe_x n : _ → exn string nat :=
-  value (total_steps_safe n).
-Definition collatz_max_x n m : _ → nat * nat := value (collatz_max n m).
-Definition collatz_trace_x n l : _ → nat * list nat :=
-  value (collatz_trace n l).
-Definition collatz_len_x n : _ → nat := value (collatz_len n).
-Definition sum_lens_x n m : _ → nat * nat := value (sum_lens n m).
-
-Extraction Inline pfixRec pfixExn pfixState Rec def.
+Definition minux_x n m := value (minus n m).
+Definition pred_x n := value (pred n).
+Definition pred'_x n := value (pred' n).
+Definition pred_twice_x n := value (pred_twice n).
+Definition gcd_x a b := value (gcd a b).
+Definition toeven_x n := value (toeven n).
+Definition as_fin_x m n := value (@as_fin m n).
+Definition predX_x n := value (predX n).
+Definition as_finX_x m n := value (@as_finX m n).
+Definition eqty_x A B := value (eqty A B).
+Definition infer_x Γ t := value (infer Γ t).
 
 Extraction "extracted.ml" value
-  collatz_x test
-  collatz_steps_x total_steps_x total_steps_safe_x
-  collatz_trace_x collatz_max_x collatz_len_x sum_lens_x
-  id_nat good_app bad_app good_if bad_if typeof_x
-  gcd_x ack_x sum_range_x div_exact_x gcd_calls_x.
+  minux_x pred_x pred'_x pred_twice_x gcd_x toeven_x as_fin_x predX_x as_finX_x
+  eqty_x infer_x idbool ok good_if bad_if.

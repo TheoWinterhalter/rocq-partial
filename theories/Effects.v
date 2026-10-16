@@ -278,3 +278,7 @@ Notation "#pfix f x .. y : T , t" :=
           let f := (λ x, .. (λ y, self (existT x .. (existT y tt) ..)) ..) in
           curryD (λ x, .. (curryD (λ y, curry_retD t)) ..))) ..)
   (at level 200, f ident, x binder, right associativity).
+
+(** Extraction instructions *)
+
+Extraction Inline pfixRec pfixExn pfixState Rec def.

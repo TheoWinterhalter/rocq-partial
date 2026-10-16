@@ -1,58 +1,58 @@
 open Extracted
 
-let show_exn = function
-  | Success n -> Printf.sprintf "success %d" n
-  | Exception e -> Printf.sprintf "exception %S" e
-
-let show_list l = "[" ^ String.concat ";" (List.map string_of_int l) ^ "]"
+let show_exn show = function
+  | Success x -> "success " ^ show x
+  | Exception e -> "exception \"" ^ e ^ "\""
 
 let rec show_ty = function
-  | TNat ->
-      "nat"
-  | TBool ->
-      "bool"
-  | TArr (a, b) ->
-      Printf.sprintf "(%s -> %s)" (show_ty a) (show_ty b)
+  | Bool -> "bool"
+  | Arr (a, b) -> Printf.sprintf "(%s -> %s)" (show_ty a) (show_ty b)
 
-let show_tc = function
-  | Success ty -> Printf.sprintf "success %s" (show_ty ty)
-  | Exception e -> Printf.sprintf "exception %S" e
+let rec fin_to_int = function
+  | F0 _ -> 0
+  | FS (_, f) -> 1 + fin_to_int f
+
+let show_unit () = "tt"
+let show_fin f = string_of_int (fin_to_int f)
 
 let check name got expected =
-  Printf.printf "%-34s %s\n" name (if got = expected then "ok" else "FAIL: got " ^ got);
+  let msg = if got = expected then "ok" else "FAIL: got " ^ got in
+  Printf.printf "%-34s %s\n" name msg ;
   if got <> expected then exit 1
 
+let check_int name got expected =
+  check name (string_of_int got) expected
+
+let check_fin name got expected =
+  check name (show_fin got) expected
+
+let check_exn show name got expected =
+  check name (show_exn show got) expected
+
 let () =
-  (* plain recursion *)
-  check "collatz_len 27" (string_of_int (collatz_len_x 27)) "111";
-  (* exceptions *)
-  check "collatz_steps 6" (show_exn (collatz_steps_x 6)) "success 8";
-  check "collatz_steps 0" (show_exn (collatz_steps_x 0)) "exception \"collatz: zero\"";
-  (* state *)
-  let (steps, trace) = collatz_trace_x 6 [] in
-  check "collatz_trace 6 (result)" (string_of_int steps) "8";
-  check "collatz_trace 6 (state)" (show_list trace) "[1;2;4;8;16;5;10;3;6]";
-  let (m, ticks) = collatz_max_x 27 0 in
-  check "collatz_max 27 (max)" (string_of_int m) "9232";
-  check "collatz_max 27 (ticks)" (string_of_int ticks) "112";
-  let (r, s) = sum_lens_x 10 0 in
-  check "sum_lens 10 (result)" (string_of_int r) "67";
-  check "sum_lens 10 (state)" (string_of_int s) "67";
-  (* type checker *)
-  check "type_of id_nat" (show_tc (typeof_x [] id_nat)) "success (nat -> nat)" ;
-  check "type_of good_app" (show_tc (typeof_x [] good_app)) "success nat" ;
-  check "type_of bad_app" (show_tc (typeof_x [] bad_app)) "exception \"argument type mismatch\"" ;
-  check "type_of good_if" (show_tc (typeof_x [] good_if)) "success nat" ;
-  check "type_of bad_if" (show_tc (typeof_x [] bad_if)) "exception \"branches have different types\"" ;
-  (* more tests *)
-  check "gcd 48 18"              (string_of_int (gcd_x 48 18)) "6";
-  check "ack 2 3"                (string_of_int (ack_x 2 3)) "9";
-  check "sum_range 1 100 0"      (string_of_int (sum_range_x 1 100 0)) "5050";
-  check "div_exact 42 7"         (show_exn (div_exact_x 42 7)) "success 6";
-  check "div_exact 5 0"          (show_exn (div_exact_x 5 0)) "exception \"division by zero\"";
-  check "div_exact 7 3"          (show_exn (div_exact_x 7 3)) "exception \"not divisible\"";
-  let (r, calls) = gcd_calls_x 48 18 0 in
-  check "gcd_calls 48 18 (result)" (string_of_int r) "6";
-  check "gcd_calls 48 18 (calls)"  (string_of_int calls) "4";
-  (* done *)
+  check_int "minus 5 3" (minux_x 5 3) "2";
+  check_int "minus 4 0" (minux_x 4 0) "4";
+  check_int "pred 5" (pred_x 5) "4";
+  check_int "pred' 5" (pred'_x 5) "4";
+  check_int "pred_twice 5" (pred_twice_x 5) "3";
+  check_int "gcd 48 18" (gcd_x 48 18) "6";
+  check_int "gcd 18 48" (gcd_x 18 48) "6";
+  check_int "gcd 7 0" (gcd_x 7 0) "7";
+  check_fin "as_fin 3 1" (as_fin_x 3 1) "1";
+  check_fin "as_fin 5 4" (as_fin_x 5 4) "4";
+  check_exn string_of_int "predX 5" (predX_x 5) "success 4";
+  check_exn string_of_int "predX 0" (predX_x 0) "exception \"pred of 0\"";
+  check_exn show_fin "as_finX 3 1" (as_finX_x 3 1) "success 1";
+  check_exn show_fin "as_finX 2 5" (as_finX_x 2 5) "exception \"Too big to fit.\"";
+  check_exn show_unit "eqty bool bool" (eqty_x Bool Bool) "success tt";
+  check_exn show_unit "eqty (b->b) (b->b)" (eqty_x (Arr (Bool, Bool)) (Arr (Bool, Bool))) "success tt";
+  check_exn show_unit "eqty bool (b->b)" (eqty_x Bool (Arr (Bool, Bool))) "exception \"Arr ≠ Bool\"";
+  check_exn show_ty "infer idbool" (infer_x [] idbool) "success (bool -> bool)";
+  check_exn show_ty "infer ok" (infer_x [] ok) "success bool";
+  check_exn show_ty "infer good_if" (infer_x [] good_if) "success bool";
+  check_exn show_ty "infer bad_if" (infer_x [] bad_if) "success (bool -> bool)";
+  check_exn show_ty "infer if fas tru fas" (infer_x [] (Ifte (Fas, Tru, Fas))) "success bool";
+  check_exn show_ty "infer var 0" (infer_x [] (Var 0)) "exception \"Unbound variable\"";
+  check_exn show_ty "infer var 0 in [bool]" (infer_x [Bool] (Var 0)) "success bool";
+  check_exn show_ty "infer tru tru" (infer_x [] (Ap (Tru, Tru))) "exception \"Cannot be applied\"";
   print_endline "all tests passed"
