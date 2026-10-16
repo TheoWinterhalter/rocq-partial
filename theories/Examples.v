@@ -236,17 +236,17 @@ Definition infer : ctx → tm → ExnT string partial ty :=
     | fas => ret Bool
     | ifte b t f =>
       iB ← inf Γ b ;;
-      (* eqty iB Bool ;; *)
+      lift (eqty iB Bool) ;;
       T ← inf Γ t ;;
       F ← inf Γ f ;;
-      (* eqty T F ;; *)
+      lift (eqty T F) ;;
       ret T
     | ap u v =>
       iAB ← inf Γ u ;;
       match iAB with
       | Arr A B =>
         iA ← inf Γ v ;;
-        (* eqty iA A ;; *)
+        lift (eqty iA A) ;;
         ret B
       | _ => raise "Cannot be applied"%string
       end

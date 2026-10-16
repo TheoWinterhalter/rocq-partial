@@ -53,12 +53,14 @@ let () =
   check_exn show_unit "eqty bool bool" (eqty_x Bool Bool) "success tt";
   check_exn show_unit "eqty (b->b) (b->b)" (eqty_x (Arr (Bool, Bool)) (Arr (Bool, Bool))) "success tt";
   check_exn show_unit "eqty bool (b->b)" (eqty_x Bool (Arr (Bool, Bool))) "exception \"Arr ≠ Bool\"";
-  check_exn show_ty "infer idbool" (infer_x [] idbool) "success (bool -> bool)";
-  check_exn show_ty "infer ok" (infer_x [] ok) "success bool";
-  check_exn show_ty "infer good_if" (infer_x [] good_if) "success bool";
-  check_exn show_ty "infer bad_if" (infer_x [] bad_if) "success (bool -> bool)";
-  check_exn show_ty "infer if fas tru fas" (infer_x [] (Ifte (Fas, Tru, Fas))) "success bool";
-  check_exn show_ty "infer var 0" (infer_x [] (Var 0)) "exception \"Unbound variable\"";
-  check_exn show_ty "infer var 0 in [bool]" (infer_x [Bool] (Var 0)) "success bool";
-  check_exn show_ty "infer tru tru" (infer_x [] (Ap (Tru, Tru))) "exception \"Cannot be applied\"";
+  check_exn show_ty "infer: idbool" (infer_x [] idbool) "success (bool -> bool)";
+  check_exn show_ty "infer: ok" (infer_x [] ok) "success bool";
+  check_exn show_ty "infer: good_if" (infer_x [] good_if) "success bool";
+  check_exn show_ty "infer: bad_if" (infer_x [] bad_if) "exception \"Arr ≠ Bool\"";
+  check_exn show_ty "infer: if idbool tru fas" (infer_x [] (Ifte (idbool, Tru, Fas))) "exception \"Arr ≠ Bool\"";
+  check_exn show_ty "infer: idbool idbool" (infer_x [] (Ap (idbool, idbool))) "exception \"Arr ≠ Bool\"";
+  check_exn show_ty "infer: if fas tru fas" (infer_x [] (Ifte (Fas, Tru, Fas))) "success bool";
+  check_exn show_ty "infer: var 0" (infer_x [] (Var 0)) "exception \"Unbound variable\"";
+  check_exn show_ty "infer: var 0 in [bool]" (infer_x [Bool] (Var 0)) "success bool";
+  check_exn show_ty "infer: tru tru" (infer_x [] (Ap (Tru, Tru))) "exception \"Cannot be applied\"";
   print_endline "all tests passed"
