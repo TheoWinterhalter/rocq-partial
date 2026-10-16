@@ -10,21 +10,21 @@ For extraction, this is completed by having a look at `src/main.ml`.
 
 A basic example is the following:
 ```rocq
-Definition ack : nat → nat → partial nat :=
-  #pfix ack (m : nat) (n : nat),
-    match m, n with
-    | 0, _ => ret (S n)
-    | S m', 0 => ack m' 1
-    | S m', S n' => k ← ack m n' ;; ack m' k
-    end.
+Definition gcd : nat → nat → partial nat :=
+  #pfix gcd a b,
+    if a <? b then gcd b a
+    else if b =? 0 then ret a
+    else gcd (a - b) b.
 
-Definition ack_sum : nat → partial nat :=
-  #pfix ack_sum n,
-    if n =? 0 then ret 0
-    else
-      k ← lift (ack n n) ;;
-      l ← ack_sum (n - 1) ;;
-      ret (k + l).
+Definition gcd_list n : list nat → partial (list nat) :=
+  #pfix foo (l : list nat),
+    match l with
+    | [] => ret []
+    | a :: l =>
+      b ← lift (gcd n a) ;;
+      l ← foo l ;;
+      ret (b :: l)
+    end.
 ```
 
 It makes use of notations for monads, and shows how one can use `lift` to

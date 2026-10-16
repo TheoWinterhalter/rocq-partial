@@ -12,6 +12,7 @@ let rec fin_to_int = function
   | F0 _ -> 0
   | FS (_, f) -> 1 + fin_to_int f
 
+let show_list l = "[" ^ String.concat ";" (List.map string_of_int l) ^ "]"
 let show_unit () = "tt"
 let show_fin f = string_of_int (fin_to_int f)
 
@@ -22,6 +23,9 @@ let check name got expected =
 
 let check_int name got expected =
   check name (string_of_int got) expected
+
+let check_list name got expected =
+  check name (show_list got) expected
 
 let check_fin name got expected =
   check name (show_fin got) expected
@@ -40,6 +44,8 @@ let () =
   check_int "gcd 7 0" (gcd_x 7 0) "7";
   check_fin "as_fin 3 1" (as_fin_x 3 1) "1";
   check_fin "as_fin 5 4" (as_fin_x 5 4) "4";
+  check_list "gcd_list 12 [8;18;5;0]" (gcd_list_x 12 [8; 18; 5; 0]) "[4;6;1;12]";
+  check_list "gcd_list 12 []" (gcd_list_x 12 []) "[]";
   check_exn string_of_int "predX 5" (predX_x 5) "success 4";
   check_exn string_of_int "predX 0" (predX_x 0) "exception \"pred of 0\"";
   check_exn show_fin "as_finX 3 1" (as_finX_x 3 1) "success 1";

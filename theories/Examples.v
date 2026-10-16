@@ -163,6 +163,18 @@ Definition as_fin : ∀ {m}, nat → partial (fin m) :=
     | S m, S n => fS <*> af m n
     end.
 
+(** We can use [lift] for any partial computation *)
+
+Definition gcd_list n : list nat → partial (list nat) :=
+  #pfix foo (l : list nat),
+    match l with
+    | [] => ret []
+    | a :: l =>
+      b ← lift (gcd n a) ;;
+      l ← foo l ;;
+      ret (b :: l)
+    end.
+
 (** ** Effects
 
   We can also use effects to, for instance, return exceptions instead of simply
@@ -290,6 +302,7 @@ Definition pred_twice_x n := value (pred_twice n).
 Definition gcd_x a b := value (gcd a b).
 Definition toeven_x n := value (toeven n).
 Definition as_fin_x m n := value (@as_fin m n).
+Definition gcd_list_x n l := value (gcd_list n l).
 Definition predX_x n := value (predX n).
 Definition as_finX_x m n := value (@as_finX m n).
 Definition eqty_x A B := value (eqty A B).
@@ -297,4 +310,4 @@ Definition infer_x Γ t := value (infer Γ t).
 
 Extraction "extracted.ml" value
   minux_x pred_x pred'_x pred_twice_x gcd_x toeven_x as_fin_x predX_x as_finX_x
-  eqty_x infer_x idbool ok good_if bad_if.
+  gcd_list_x eqty_x infer_x idbool ok good_if bad_if.
