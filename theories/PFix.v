@@ -10,6 +10,18 @@ Set Primitive Projections.
 Set Equations Transparent.
 Unset Equations With Funext.
 
+(** Fuel for [Acc_intro_generator]
+
+  The default value [1000] has a high cost so it can be easily replaced.
+
+*)
+
+Class AccFuel :=
+  acc_fuel : nat.
+
+#[export] Instance default_fuel : AccFuel | 1000 :=
+  1000.
+
 (** General recursion by recording call tree *)
 
 Inductive orec A B C :=
@@ -146,7 +158,7 @@ Section Fix.
   #[local] Instance wf_partial :
     WellFounded (λ (x y : sigmaarg), partial_lt (pr1 x) (pr1 y)).
   Proof.
-    (* eapply Acc_intro_generator with (1 := acc_fuel). *)
+    eapply Acc_intro_generator with (1 := acc_fuel).
     intros [x h].
     pose proof (partial_lt_acc x h) as hacc.
     induction hacc as [x hacc ih] in h |- *.
