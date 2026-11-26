@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "rocq-partial"
-version: "0.1"
+version: "0.2"
 synopsis: "A Rocq library for extractable partial functions"
 description: """
 Rocq-partial provides a `partial` monad for representing partiality in Rocq.
